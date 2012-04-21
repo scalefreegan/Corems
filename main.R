@@ -45,7 +45,7 @@ params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 # load EGRIN env
 runCorems <- function() {
   #source("processEGRIN.R")
-  require(filehashRO)
+  require(filehash)
   o <- new.env(parent = baseenv())
   o$parameters <- lapply(params,function(i){eval(as.symbol(i))})
   names(o$parameters) <- params
