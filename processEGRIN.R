@@ -229,3 +229,10 @@ cleanCoremsBySize <- function(regulons.table, threshold = COREMSIZETHRESH,gene=F
   return(o)
 }
 
+coremsTOgbg <- function(corem.table) {
+  # Make corem data.table into gBg co-occurence matrix for analysis
+  g<-unique(c(as.character(corem.table[,Gene1]),as.character(corem.table[,Gene2])))
+  m <- matrix(0,nrows=length(g),ncols=length(g),dimnames=list(g,g))
+  m[g] <- corem.table[,Community.Density]
+  m[g[,2],g[,1]] <- corem.table[,Community.Density]
+}
