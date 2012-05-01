@@ -230,28 +230,28 @@ loadCorems <- function(fCutoff,fRoot="out",dataTable=T) {
 # Postprocess corems
 ####################################################################################
 
-cleanCoremsBySize <- function(regulons.table, threshold = COREMSIZETHRESH,gene=F) {
-  # Remove regulons with fewer than x genes
+cleanCoremsBySize <- function(corems.table, threshold = COREMSIZETHRESH,gene=F) {
+  # Remove corems with fewer than x genes
   require(multicore)
   require(data.table)
-  setkey(regulons.table,"Community.ID")
+  setkey(corems.table,"Community.ID")
   if (gene) {
     # By gene size
-    r <- as.character(unique(regulons.table[,Community.ID]))
-    r.len <- unlist(lapply(r,function(i){i<-length(getGenes(i,regulons.table))}))
+    r <- as.character(unique(corems.table[,Community.ID]))
+    r.len <- unlist(lapply(r,function(i){i<-length(getGenes(i,corems.table))}))
     names(r.len) <- r
     toRemove <- names(r.len)[which(r.len <= threshold)]
-    o <- regulons.table
+    o <- corems.table
     for (i in toRemove) {
       print(i)
       o <- o[-which(o[,Community.ID]==i),]  
     }
   } else {
     # By edges
-    r <- table(regulons.table[,Community.ID])
+    r <- table(corems.table[,Community.ID])
     r <- names(r[r<=threshold])
-    toRemove <- unlist(mclapply(r,function(i){i<-which(regulons.table[,Community.ID]==i)}))
-    o <- regulons.table
+    toRemove <- unlist(mclapply(r,function(i){i<-which(corems.table[,Community.ID]==i)}))
+    o <- corems.table
     o <- o[-toRemove,]
   }
   return(o)
@@ -266,14 +266,135 @@ coremsTOgbg <- function(corem.table) {
   return(m)
 }
 
+#Get genes from corems function
+getGenes <- function(coremID = "1", corems.table = corems) {
+  if (class(corems.table)[1]=="data.table") {
+    require(data.table)
+    setkey(corems.table,"Community.ID")
+    g <- corems.table[coremID,mult="all"]
+    g <- unique(c(as.character(g[,Gene1]),as.character(g[,Gene2])))
+  } else {
+    g<-unique(c(as.character(corems.table[which(corems.table[,3]==coremID),1]),
+                as.character(corems.table[which(corems.table[,3]==coremID),2])))
+  }
+  g <- g[!is.na(g)]
+  return(g) 
+}
+
+getRegulons <- function(geneName = "VNG0700G", regulons.table = regulons) {
+  if (class(regulons.table)[1]=="data.table") {
+    require(data.table)
+    setkey(regulons.table,Gene1)
+    g1 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
+    setkey(regulons.table,Gene2)
+    g2 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
+    g <- unique(c(g1,g2))
+    setkey(regulons.table,Community.ID)
+  } else {
+    g<-unique(c(as.numeric(regulons.table[which(regulons.table[,1]==geneName),3]),
+                as.numeric(regulons.table[which(regulons.table[,2]==geneName),3])))
+  }
+  g <- g[!is.na(g)]
+  return(g) 
+}
+
+randomConditions <- function(geneSetSize=seq(3,176,1),ratios,resamples=1000,method=c("sd","c.var")[2],mode=c("median","mean")[1]) {
+  require(multicore)
+  genePool <- rownames(ratios)
+  geneSetSize <- as.character(geneSetSize)
+  if (method == "sd") {
+    o<-mclapply(seq(1,length(geneSetSize)),function(i) {
+      len = as.integer(geneSetSize[i])
+      print(len)
+      if (file.exists(paste("./sd/",len,method,resamples,".txt.gz",sep=""))) {
+        return(NULL)
+      } else {
+        i <- matrix(0,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)))
+        for (j in seq(1,resamples,1)) {
+          g <- sample(genePool,len)
+          i[j,] <- sd(ratios[g,])
+        }
+        write.table(i,file=paste("./sd/",len,method,resamples,".txt",sep=""))
+        system(paste("gzip",paste("./cvar/",len,method,resamples,".txt",sep=""),sep=" "))
+        return(NULL)
+      }
+    })
+  } else if (method == "c.var") {
+    o<-mclapply(seq(1,length(geneSetSize)),function(i) {
+      len = as.integer(geneSetSize[i])
+      print(len)
+      if (file.exists(paste("./cvar/",len,method,resamples,".txt",sep=""))) {
+        return(NULL)
+      } else {
+        i <- matrix(0,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)))
+        for (j in seq(1,resamples,1)) {
+          g <- sample(genePool,len)
+          m <- abs(colMeans(ratios[g,]))
+          m[which(m==0)] = 1e-6
+          i[j,] <- sd(ratios[g,])
+        }
+        write.table(i,file=paste("./cvar/",len,method,resamples,".txt",sep=""))
+        system(paste("gzip",paste("./cvar/",len,method,resamples,".txt",sep=""),sep=" "))
+        return(NULL)
+      }
+    })
+  }
+  invisible(o)
+}
+
+getSignificantConditions <- function(genes,ratios,ratios.normalized=F,resamples=30000,method=c("sd","c.var")[1],
+                                       all=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
+  require("bigmemory")
+  lookup.table = read.big.matrix(paste("/media/OS_Install/Ubuntu_docs/conditionResamples/cvar/",length(genes),method,resamples,".txt",sep=""),
+                                 sep=" ",has.row.names=T,ignore.row.names=T,
+                                 skip=1,type="double")
+  if (method == "sd") {
+    var.m <- matrix(apply(ratios[genes,],2,sd),nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
+    comp <- var.m>lookup.table
+    o <- apply(comp,2,sum)/dim(comp)[1]  
+  } else if (method == "c.var") {
+    m <- abs(colMeans(ratios[genes,]))
+    m[which(m==0)] = 1e-6
+    var.m <- matrix(apply(ratios[genes,],2,sd)/m,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
+    comp <- var.m>as.matrix(lookup.table)
+    o <- apply(comp,2,sum)/dim(comp)[1]
+  }
+  if (!all) {
+    # Only report conds with p<=pval
+    o <- o[o<=pval]
+  }
+  if (enforce.diff) {
+    normRatios <- function(ratios) {
+      o <- t(scale(t(ratios), 
+                   center = apply(ratios, 1, median, 
+                                  na.rm = T), scale = apply(ratios, 
+                                                            1, sd, na.rm = T)))
+      return(o)
+    }
+    # normalize ratios (just in case they're not)
+    if (ratios.normalized == F) {
+      ratios <- normRatios(ratios)
+    }
+    meanExp <- abs(colMeans(ratios[genes,names(o)]))
+    meanExp <- which(meanExp>=diff.cutoff)
+    o <- o[meanExp]
+  }
+  return(o)
+}
+
 
 ####################################################################################
 # General functions
 ####################################################################################
 
 # Unloads packages. Mostly to unload filehashRO
-unload<-function(pkg) {detach(pos = match(paste("package", pkg, sep=":"), search()),unload=T)}
+unload<-function(pkg) {if (!is.na(match(paste("package", pkg, sep=":"), search()))) detach(pos = match(paste("package", pkg, sep=":"), search()),unload=T)}
 
+# Normalize ratios
+normalizeRatios <- function(ratios){
+  ratios.norm <- t(scale(t(ratios), center = apply(ratios, 1, median, na.rm = T), scale = apply(ratios, 1, sd, na.rm = T)))
+  return(ratios.norm)
+}
 
 ###############################
 # Coefficient of variation
@@ -306,4 +427,31 @@ residual <- function( rats, allRatios, maxRowVar = mean( apply( allRatios[,], 1,
   if ( is.na( row.var ) || row.var > maxRowVar ) row.var <- maxRowVar
   average.r <- average.r / row.var
   return(average.r)
+}
+
+###############################
+# General plotting              
+###############################
+
+# Microarray color scheme
+require(gplots)
+blue2yellow <- colorpanel(200,"blue","black","yellow")
+
+plotHeatmap <- function(matrix,file="",cor=F,RowSideColors=rep("red",dim(matrix)[1]),scale="none",
+                        dendrogram="row",cexRow=0.75,cexCol=0.75,...) {
+  require(gplots)
+  if (scale != "none") {
+    mi.col <- colorRampPalette(c("white","red"))
+    heatmap.2(matrix,trace="none",cexRow=cexRow,cexCol=cexCol,
+              col=bluered(256),density.info="none",RowSideColors=RowSideColors,scale=scale,dendrogram=dendrogram,...)
+  } else if (cor == F) {
+    mi.col <- colorRampPalette(c("white","red"))
+    heatmap.2(matrix,trace="none",cexRow=cexRow,cexCol=cexCol,
+              breaks=seq(0,1,.01),col=mi.col(100),density.info="none",RowSideColors=RowSideColors,scale=scale,
+              dendrogram=dendrogram,...)
+  } else {
+    heatmap.2(matrix,trace="none",cexRow=cexRow,cexCol=cexCol,
+              breaks=seq(-1,1,.02),col=bluered(100),density.info="none",RowSideColors=RowSideColors,scale=scale,
+              dendrogram=dendrogram,...)
+  }
 }

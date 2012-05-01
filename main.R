@@ -64,12 +64,13 @@ runCorems <- function() {
   require(filehash)
   dbCreate("./filehash/corem_filehash.dump")
   o$corems <- dbInit("./filehash/corem_filehash.dump")
-  o$corems$all <- loadRegulons(o$link.community.threshold)
+  o$corems$all <- loadCorems(o$link.community.threshold)
   o$corems$clean_density <- o$corems$all[o$corems$all[,Community.Weighted.Density]>0,]
   o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
   # reload filehashRO
   unload("filehash")
   require(filehashRO)
+  o$ratios <- normalizeRatios(e$ratios[[1]])
 }
 
 processCorems <- function() {
