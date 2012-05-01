@@ -45,7 +45,6 @@ params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 # load EGRIN env
 runCorems <- function() {
   #source("processEGRIN.R")
-  require(filehash)
   o <- new.env(parent = baseenv())
   o$parameters <- lapply(params,function(i){eval(as.symbol(i))})
   names(o$parameters) <- params
@@ -60,11 +59,17 @@ runCorems <- function() {
   cat("Running corem detection\n")
   o$link.community.threshold <- runCoremDetection()
   cat("Reading in corems")
+  # unload filehashRO
+  unload("filehashRO")
+  require(filehash)
   dbCreate("./filehash/corem_filehash.dump")
   o$corems <- dbInit("./filehash/corem_filehash.dump")
   o$corems$all <- loadRegulons(o$link.community.threshold)
   o$corems$clean_density <- o$corems$all[o$corems$all[,Community.Weighted.Density]>0,]
   o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
+  # reload filehashRO
+  unload("filehash")
+  require(filehashRO)
 }
 
 processCorems <- function() {

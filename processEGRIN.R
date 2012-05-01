@@ -271,6 +271,10 @@ coremsTOgbg <- function(corem.table) {
 # General functions
 ####################################################################################
 
+# Unloads packages. Mostly to unload filehashRO
+unload<-function(pkg) {detach(pos = match(paste("package", pkg, sep=":"), search()),unload=T)}
+
+
 ###############################
 # Coefficient of variation
 ###############################
