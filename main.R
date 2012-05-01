@@ -39,6 +39,7 @@ LINKCOMM.SCORE=0
 LINKCOMM.SIMTHRESINC=.1
 LINKCOMM.SIMSCORE=5
 COREMSIZETHRESH = 3
+RDATANAME = "corems.RData"
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 
@@ -71,6 +72,15 @@ runCorems <- function() {
   unload("filehash")
   require(filehashRO)
   o$ratios <- normalizeRatios(e$ratios[[1]])
+  save(o,file=RDATANAME)
+  return(o)
+}
+
+loadCorems <- function() {
+  load(RDATANAME)
+  # re.init filehash
+  # unload filehashRO
+  o$corems <- dbInit("./filehash/corem_filehash.dump")
 }
 
 processCorems <- function() {

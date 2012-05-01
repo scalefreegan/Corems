@@ -298,56 +298,36 @@ getRegulons <- function(geneName = "VNG0700G", regulons.table = regulons) {
   return(g) 
 }
 
-randomConditions <- function(geneSetSize=seq(3,176,1),ratios,resamples=1000,method=c("sd","c.var")[2],mode=c("median","mean")[1]) {
+resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=1000,method=c("sd","c.var")[2],mode="none") {
   require(multicore)
+  unload("filehashRO")
+  require(filehash)
+  fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
+  dbCreate(fn)
+  o <- dbInit(fn)
   genePool <- rownames(ratios)
   geneSetSize <- as.character(geneSetSize)
   if (method == "sd") {
-    o<-mclapply(seq(1,length(geneSetSize)),function(i) {
+    o$sd<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
       print(len)
-      if (file.exists(paste("./sd/",len,method,resamples,".txt.gz",sep=""))) {
-        return(NULL)
-      } else {
-        i <- matrix(0,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)))
-        for (j in seq(1,resamples,1)) {
-          g <- sample(genePool,len)
-          i[j,] <- sd(ratios[g,])
-        }
-        write.table(i,file=paste("./sd/",len,method,resamples,".txt",sep=""))
-        system(paste("gzip",paste("./cvar/",len,method,resamples,".txt",sep=""),sep=" "))
-        return(NULL)
-      }
-    })
+      i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
+    }) 
+    names(o$sd) <- geneSetSize
   } else if (method == "c.var") {
-    o<-mclapply(seq(1,length(geneSetSize)),function(i) {
+    o$cvar<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
       print(len)
-      if (file.exists(paste("./cvar/",len,method,resamples,".txt",sep=""))) {
-        return(NULL)
-      } else {
-        i <- matrix(0,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)))
-        for (j in seq(1,resamples,1)) {
-          g <- sample(genePool,len)
-          m <- abs(colMeans(ratios[g,]))
-          m[which(m==0)] = 1e-6
-          i[j,] <- sd(ratios[g,])
-        }
-        write.table(i,file=paste("./cvar/",len,method,resamples,".txt",sep=""))
-        system(paste("gzip",paste("./cvar/",len,method,resamples,".txt",sep=""),sep=" "))
-        return(NULL)
-      }
+      i <- do.call(rbind,lapply(seq(1:resamples),function(j){cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)}))
     })
+    names(o$cvar) <- geneSetSize
   }
-  invisible(o)
+  return(o)
 }
 
-getSignificantConditions <- function(genes,ratios,ratios.normalized=F,resamples=30000,method=c("sd","c.var")[1],
+getSignificantConditions <- function(coremGeneList,ratios,ratios.normalized=F,resamples=1000,method=c("sd","c.var")[2],
                                        all=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
   require("bigmemory")
-  lookup.table = read.big.matrix(paste("/media/OS_Install/Ubuntu_docs/conditionResamples/cvar/",length(genes),method,resamples,".txt",sep=""),
-                                 sep=" ",has.row.names=T,ignore.row.names=T,
-                                 skip=1,type="double")
   if (method == "sd") {
     var.m <- matrix(apply(ratios[genes,],2,sd),nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
     comp <- var.m>lookup.table
@@ -364,16 +344,9 @@ getSignificantConditions <- function(genes,ratios,ratios.normalized=F,resamples=
     o <- o[o<=pval]
   }
   if (enforce.diff) {
-    normRatios <- function(ratios) {
-      o <- t(scale(t(ratios), 
-                   center = apply(ratios, 1, median, 
-                                  na.rm = T), scale = apply(ratios, 
-                                                            1, sd, na.rm = T)))
-      return(o)
-    }
     # normalize ratios (just in case they're not)
     if (ratios.normalized == F) {
-      ratios <- normRatios(ratios)
+      ratios <- normalizeRatios(ratios)
     }
     meanExp <- abs(colMeans(ratios[genes,names(o)]))
     meanExp <- which(meanExp>=diff.cutoff)
@@ -399,12 +372,12 @@ normalizeRatios <- function(ratios){
 ###############################
 # Coefficient of variation
 ###############################
-cvar <- function(genes,conditions,ratios,return=c("median","mean","none")[1]) {
+cvar <- function(genes,conditions,ratios,mode=c("median","mean","none")[1]) {
   m <- abs(apply(ratios[genes,conditions,drop=F],2,mean,na.rm=T))
   m[which(m==0)] = 1e-6
-  if (return=="mean") { 
+  if (mode=="mean") { 
     var.m <- mean(apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m,na.rm=T)
-  } else if (return=="median"){
+  } else if (mode=="median"){
     var.m <- median(apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m,na.rm=T)
   } else {
     var.m <- apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m
