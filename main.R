@@ -62,9 +62,8 @@ runCorems <- function() {
   cat("Reading in corems")
   dbCreate("./filehash/corem_filehash.dump")
   o$corems <- dbInit("./filehash/corem_filehash.dump")
-  corem <- 
   o$corems$all <- loadRegulons(o$link.community.threshold)
-  o$co$coorems$clean_density <- o$corems$all[o$corems$all[,Community.Weighted.Density]>0,]
+  o$corems$clean_density <- o$corems$all[o$corems$all[,Community.Weighted.Density]>0,]
   o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
 }
 

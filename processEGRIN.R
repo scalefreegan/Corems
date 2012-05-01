@@ -34,6 +34,14 @@
 # COREMSIZETHRESH [3] minimum size of corem, # edges
 ####################################################################################
 
+####################################################################################
+# Discover corems given ensemble cMonkey
+####################################################################################
+
+# 
+# Transform cMonkey output into weighted adjacency matrix
+# co-occurence of genes in biclusters
+#
 make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,minMotifScore=MINMOTIFSCORE) {
   require(multicore)
   R.m = matrix(0,nrow=length(rownames(e$ratios[[1]])),ncol=length(rownames(e$ratios[[1]])))
@@ -61,6 +69,11 @@ make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,min
   return(R.m.2)
 }
 
+#
+# Extract the backbone from the graph
+# removes noise
+# From PMID: 19357301
+#
 multiscaleBackbone <- function(gBg, pval=BACKBONE.PVAL,multicore=MULTICORE,makeFullyConnected=FULLY.CONNECTED) {
   # gBg is any arbitrary matrix
   require(multicore)
@@ -109,6 +122,10 @@ multiscaleBackbone <- function(gBg, pval=BACKBONE.PVAL,multicore=MULTICORE,makeF
   return(o)
 }
 
+#
+# Write clean gBg matrix in format that can be read by Antoine's
+# corem detection code
+#
 writeEdgeList <- function(matrix,file=paste(OUTDIR,"out",sep=""), weighted=T) {
   index <- which(upper.tri(matrix),arr.ind=T)
   index <- index[which(matrix[index]>0),]
@@ -123,6 +140,9 @@ writeEdgeList <- function(matrix,file=paste(OUTDIR,"out",sep=""), weighted=T) {
   }
 }
 
+#
+# Run Antoine's C++ corem detection code
+#
 runCoremDetection <- function(numGenes = dim(e$ratios[[1]])[1], dir = OUTDIR,s = LINKCOMM.SCORE) {
   require(multicore)
   cwd <- getwd()
@@ -152,9 +172,10 @@ runCoremDetection <- function(numGenes = dim(e$ratios[[1]])[1], dir = OUTDIR,s =
   ind <- as.integer(def_map[as.character(LINKCOMM.SIMSCORE)])
   maxT <- density[,1][which(density[,ind]==max(density[,ind]))]
   cat("Summary plotted. See density_stats.pdf\n")
-  ######
-  # Plot
-  ######
+  ######################################################################
+  # Plot corem density distributions across cut height given alternative
+  # scoring approaches
+  ######################################################################
   pdf("density_stats.pdf")
   plot(density[,1],density[,3],col="black",type="l",lty=1,
        ylim=c(0, 1.1*max(c(density[,3],density[,5],density[,8]),na.rm=T)),ylab="Similarity Score",
@@ -179,7 +200,10 @@ runCoremDetection <- function(numGenes = dim(e$ratios[[1]])[1], dir = OUTDIR,s =
   return(maxT)
 }
 
-loadRegulons <- function(fCutoff,fRoot="out",dataTable=T) {
+# 
+# Loads corems with max density according to scoring metric used
+#
+loadCorems <- function(fCutoff,fRoot="out",dataTable=T) {
   require(data.table)
   # Load/Process/Save file
   # Call getting_communities as follows:
@@ -201,6 +225,10 @@ loadRegulons <- function(fCutoff,fRoot="out",dataTable=T) {
   }
   return(out)
 }
+
+####################################################################################
+# Postprocess corems
+####################################################################################
 
 cleanCoremsBySize <- function(regulons.table, threshold = COREMSIZETHRESH,gene=F) {
   # Remove regulons with fewer than x genes
@@ -232,7 +260,46 @@ cleanCoremsBySize <- function(regulons.table, threshold = COREMSIZETHRESH,gene=F
 coremsTOgbg <- function(corem.table) {
   # Make corem data.table into gBg co-occurence matrix for analysis
   g<-unique(c(as.character(corem.table[,Gene1]),as.character(corem.table[,Gene2])))
-  m <- matrix(0,nrows=length(g),ncols=length(g),dimnames=list(g,g))
-  m[g] <- corem.table[,Community.Density]
-  m[g[,2],g[,1]] <- corem.table[,Community.Density]
+  m <- matrix(0,nrow=length(g),ncol=length(g),dimnames=list(g,g))
+  m[cbind(as.character(corem.table[,Gene1]),as.character(corem.table[,Gene2]))] <- corem.table[,Community.Density]
+  m[cbind(as.character(corem.table[,Gene2]),as.character(corem.table[,Gene1]))] <- corem.table[,Community.Density]
+  return(m)
+}
+
+
+####################################################################################
+# General functions
+####################################################################################
+
+###############################
+# Coefficient of variation
+###############################
+cvar <- function(genes,conditions,ratios,return=c("median","mean","none")[1]) {
+  m <- abs(apply(ratios[genes,conditions,drop=F],2,mean,na.rm=T))
+  m[which(m==0)] = 1e-6
+  if (return=="mean") { 
+    var.m <- mean(apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m,na.rm=T)
+  } else if (return=="median"){
+    var.m <- median(apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m,na.rm=T)
+  } else {
+    var.m <- apply(ratios[genes,conditions,drop=F],2,sd,na.rm=T)/m
+  }
+  return(var.m)
+}
+
+###############################
+# Residuals                
+###############################
+residual <- function( rats, allRatios, maxRowVar = mean( apply( allRatios[,], 1, var, use="pair" ), na.rm=T )) {
+  d.rows <- rowMeans( rats, na.rm=T )
+  d.cols <- colMeans( rats, na.rm=T )
+  d.all <- mean( d.rows, na.rm=T )
+  rij <- rats + d.all
+  rij <- rij - matrix( d.cols, nrow=nrow( rij ), ncol=ncol( rij ), byrow=T )
+  rij <- rij - matrix( d.rows, nrow=nrow( rij ), ncol=ncol( rij ), byrow=F )
+  average.r <- mean( abs( rij ), na.rm = TRUE )
+  row.var <- mean( apply( rats, 1, var, use = "pairwise.complete.obs" ), na.rm=T )
+  if ( is.na( row.var ) || row.var > maxRowVar ) row.var <- maxRowVar
+  average.r <- average.r / row.var
+  return(average.r)
 }
