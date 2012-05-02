@@ -59,7 +59,7 @@ runCorems <- function() {
   writeEdgeList(o$gBg.backbone)
   cat("Running corem detection\n")
   o$link.community.threshold <- runCoremDetection()
-  cat("Reading in corems")
+  cat("Reading in corems\n")
   # unload filehashRO
   unload("filehashRO")
   require(filehash)
@@ -83,7 +83,11 @@ loadCorems <- function() {
   o$corems <- dbInit("./filehash/corem_filehash.dump")
 }
 
-processCorems <- function() {
+processCorems <- function(method=c("all","clean_density","clean_size")[2]) {
+  loadCorems()
+  o$corem_list <- list()
+  o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
+  o$corem_list$genes <- mclapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
   
 }
 

@@ -250,7 +250,7 @@ cleanCoremsBySize <- function(corems.table, threshold = COREMSIZETHRESH,gene=F) 
     # By edges
     r <- table(corems.table[,Community.ID])
     r <- names(r[r<=threshold])
-    toRemove <- unlist(mclapply(r,function(i){i<-which(corems.table[,Community.ID]==i)}))
+    toRemove <- unlist(lapply(r,function(i){i<-which(corems.table[,Community.ID]==i)}))
     o <- corems.table
     o <- o[-toRemove,]
   }
@@ -325,13 +325,14 @@ resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=1000,me
   return(o)
 }
 
-getSignificantConditions <- function(coremGeneList,ratios,ratios.normalized=F,resamples=1000,method=c("sd","c.var")[2],
+getSignificantConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","c.var")[2],
                                        all=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
-  require("bigmemory")
+  fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
+  lookup.table <- dbInit(fn)
+  len = length(genes)
   if (method == "sd") {
-    var.m <- matrix(apply(ratios[genes,],2,sd),nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
-    comp <- var.m>lookup.table
-    o <- apply(comp,2,sum)/dim(comp)[1]  
+    lookup.ecdf <- apply(lookup.table[method][len],2,ecdf)
+    o <- sapply(apply(ratios[genes,],2,sd,na.rm=T),function(i){lookup.ecdf})  
   } else if (method == "c.var") {
     m <- abs(colMeans(ratios[genes,]))
     m[which(m==0)] = 1e-6
