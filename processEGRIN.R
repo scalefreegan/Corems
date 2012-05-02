@@ -287,30 +287,34 @@ getGenes <- function(coremID = "1", corems.table = corems) {
   return(g) 
 }
 
-getRegulons <- function(geneName = "VNG0700G", regulons.table = regulons) {
-  if (class(regulons.table)[1]=="data.table") {
+getcorems <- function(geneName = "VNG0700G", corems.table = corems) {
+  if (class(corems.table)[1]=="data.table") {
     require(data.table)
-    setkey(regulons.table,Gene1)
-    g1 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
-    setkey(regulons.table,Gene2)
-    g2 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
+    setkey(corems.table,Gene1)
+    g1 <- unique(as.character(corems.table[geneName,mult="all"][,Community.ID]))
+    setkey(corems.table,Gene2)
+    g2 <- unique(as.character(corems.table[geneName,mult="all"][,Community.ID]))
     g <- unique(c(g1,g2))
-    setkey(regulons.table,Community.ID)
+    setkey(corems.table,Community.ID)
   } else {
-    g<-unique(c(as.numeric(regulons.table[which(regulons.table[,1]==geneName),3]),
-                as.numeric(regulons.table[which(regulons.table[,2]==geneName),3])))
+    g<-unique(c(as.numeric(corems.table[which(corems.table[,1]==geneName),3]),
+                as.numeric(corems.table[which(corems.table[,2]==geneName),3])))
   }
   g <- g[!is.na(g)]
   return(g) 
 }
 
-resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,method=c("sd","cvar")[2],mode="none") {
+resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,method=c("sd","cvar")[2],mode="none",filehash=T) {
   require(multicore)
-  unload("filehashRO")
-  require(filehash)
-  fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
-  dbCreate(fn)
-  o <- dbInit(fn)
+  if (filehash) {
+    unload("filehashRO")
+    require(filehash)
+    fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
+    dbCreate(fn)
+    o <- dbInit(fn)
+  } else {
+    o <- list()
+  }
   genePool <- rownames(ratios)
   geneSetSize <- as.character(geneSetSize)
   if (method == "sd") {
@@ -337,11 +341,15 @@ resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,m
   invisible(o)
 }
 
-getSignificantConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
-                                       all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
-  fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
-  lookup.table <- dbInit(fn)
+findCoremConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
+                                       all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
   len = as.character(length(genes))
+  if (filehash) {
+    fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
+    lookup.table <- dbInit(fn)
+  } else if (is.null(lookup.table)) {
+    lookup.table <-resampleRandomConditions(geneSetSize=len,ratios,resamples,method,"none",F)
+  }
   if (method == "sd") {
     lookup.ecdf <- apply(lookup.table[[method]][[len]],2,ecdf)
     val <- apply(ratios[genes,],2,sd,na.rm=T)

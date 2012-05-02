@@ -52,11 +52,11 @@ runCorems <- function() {
   system(paste("mkdir",OUTDIR,sep=" "))
   system(paste("mkdir filehash"))
   cat("Making gene-gene co-occurence matrix from cMonkey data\n")
-  o$gBg <- make.r.gBg()
+  gBg <- make.r.gBg()
   cat("Extracting backbone\n")
-  o$gBg.backbone <- multiscaleBackbone(o$gBg)
+  gBg.backbone <- multiscaleBackbone(gBg)
   cat("Writing edge list\n")
-  writeEdgeList(o$gBg.backbone)
+  writeEdgeList(gBg.backbone)
   cat("Running corem detection\n")
   runCoremDetection()
   o$link.community.threshold <- chooseCutoff()
@@ -64,6 +64,10 @@ runCorems <- function() {
   # unload filehashRO
   unload("filehashRO")
   require(filehash)
+  dbCreate("./filehash/gg_filehash.dump")
+  o$gg <- dbInit("./filehash/gg_filehash.dump")
+  o$gg$gBg <- gBg; rm(gBg)
+  o$gg$gBg.backbone <- gBg.backbone; rm(gBg.backbone)
   dbCreate("./filehash/corem_filehash.dump")
   o$corems <- dbInit("./filehash/corem_filehash.dump")
   o$corems$all <- loadCorems(o$link.community.threshold)
@@ -81,7 +85,14 @@ loadCorems <- function() {
   load(RDATANAME)
   # re.init filehash
   # unload filehashRO
-  o$corems <- dbInit("./filehash/corem_filehash.dump")
+  if (file.exists("./filehash/gg_filehash.dump")) {
+    cat("Loading gene-gene co-occurence matrices into env$gg\n")
+    o$gg <- dbInit("./filehash/gg_filehash.dump")
+  }
+  if (file.exists("./filehash/corem_filehash.dump")) {
+    cat("Loading corem data.table into env$corems\n")
+    o$corems <- dbInit("./filehash/corem_filehash.dump")
+  }
   return(o)
 }
 
