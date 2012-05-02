@@ -39,6 +39,7 @@ LINKCOMM.SCORE=0
 LINKCOMM.SIMTHRESINC=.1
 LINKCOMM.SIMSCORE=3
 COREMSIZETHRESH = 3
+COREMBYSIZE = F
 RDATANAME = "corems.RData"
 CONDITIONRESAMPLES = 20000
 CONDITIONMETHOD = "cvar"
@@ -75,7 +76,9 @@ runCorems <- function() {
   o$corems <- dbInit("./filehash/corem_filehash.dump")
   o$corems$all <- loadCorems(o$link.community.threshold)
   o$corems$clean_density <- o$corems$all[o$corems$all[,Community.Weighted.Density]>0,]
-  o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
+  if (COREMBYSIZE) {
+    o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
+  }
   # reload filehashRO
   unload("filehash")
   require(filehashRO)
@@ -87,7 +90,8 @@ runCorems <- function() {
 loadEnv <- function() {
   load(RDATANAME)
   # re.init filehash
-  # unload filehashRO
+  require(filehashRO)
+  require(data.table)
   if (file.exists("./filehash/gg_filehash.dump")) {
     cat("Loading gene-gene co-occurence matrices into env$gg\n")
     o$gg <- dbInit("./filehash/gg_filehash.dump")
@@ -100,7 +104,7 @@ loadEnv <- function() {
 }
 
 processCorems <- function(method=c("all","clean_density","clean_size")[2],filehash=CONDITIONFILEHASH) {
-  o<-loadCorems()
+  o<-loadEnv()
   o$corem_list <- list()
   o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
   o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))

@@ -304,8 +304,10 @@ getcorems <- function(geneName = "VNG0700G", corems.table = corems) {
   return(g) 
 }
 
-resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,method=c("sd","cvar")[2],mode="none",filehash=T) {
+resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,
+                                     method=c("sd","cvar")[2],mode="none",filehash=T) {
   require(multicore)
+  require(Matrix)
   if (filehash) {
     unload("filehashRO")
     require(filehash)
@@ -325,6 +327,15 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
         cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
       }
       i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
+      i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+        j <- i[,j]
+        j.ecdf <- ecdf(j)
+        # make everything above lowest 7.5% quantile = 0
+        j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+        return(j)
+      }))
+      colnames(i.2) <- colnames(i)
+      i.2 <- as(i.2,"sparseMatrix")    
     }) 
     names(o$sd) <- geneSetSize
   } else if (method == "cvar") {
@@ -335,6 +346,15 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
         cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
       }
       i <- do.call(rbind,lapply(seq(1:resamples),function(j){cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)}))
+      i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+        j <- i[,j]
+        j.ecdf <- ecdf(j)
+        # make everything above lowest 7.5% quantile = 0
+        j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+        return(j)
+      }))
+      colnames(i.2) <- colnames(i)
+      i.2 <- as(i.2,"sparseMatrix")
     })
     names(o$cvar) <- geneSetSize
   }
@@ -351,11 +371,16 @@ findCoremConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","
     lookup.table <-resampleRandomConditions(geneSetSize=len,ratios,resamples,method,"none",F)
   }
   if (method == "sd") {
-    lookup.ecdf <- apply(lookup.table[[method]][[len]],2,ecdf)
+    # Make 0 values Inf -- from sparsification above
+    tmp.table = lookup.table[[method]][[len]]
+    tmp.table[which(tmp.table==0)] = Inf
+    lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- apply(ratios[genes,],2,sd,na.rm=T)
     o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
   } else if (method == "cvar") {
-    lookup.ecdf <- apply(lookup.table[[method]][[len]],2,ecdf)
+    tmp.table = lookup.table[[method]][[len]]
+    tmp.table[which(tmp.table==0)] = Inf
+    lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- cvar(genes,conditions=colnames(ratios),ratios=ratios,mode="none")
     o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
   }
