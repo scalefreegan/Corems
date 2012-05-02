@@ -111,7 +111,7 @@ processCorems <- function(method=c("all","clean_density","clean_size")[2],fileha
                        o$ratios,resamples=CONDITIONRESAMPLES,method=CONDITIONMETHOD,mode="none")
     o$corem_list$conditions <- mclapply(o$corem_list$corems,function(g) {
       findCoremConditions(o$corem_list$genes[[g]],o$ratios,ratios.normalized=T,method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
-                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...)
+                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...)})
   } else {
     # compute enrichments w/o storing in filehash
     # find lengths of corems
