@@ -40,6 +40,9 @@ LINKCOMM.SIMTHRESINC=.1
 LINKCOMM.SIMSCORE=3
 COREMSIZETHRESH = 3
 RDATANAME = "corems.RData"
+CONDITIONRESAMPLES = 20000
+CONDITIONMETHOD = "cvar"
+CONDITIONFILEHASH = T
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 
@@ -81,7 +84,7 @@ runCorems <- function() {
   return(o)
 }
 
-loadCorems <- function() {
+loadEnv <- function() {
   load(RDATANAME)
   # re.init filehash
   # unload filehashRO
@@ -96,12 +99,36 @@ loadCorems <- function() {
   return(o)
 }
 
-processCorems <- function(method=c("all","clean_density","clean_size")[2]) {
+processCorems <- function(method=c("all","clean_density","clean_size")[2],filehash=CONDITIONFILEHASH) {
   o<-loadCorems()
   o$corem_list <- list()
   o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
   o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
-  resampleConditions(geneSetSize=sort(unique(sapply(o$corem_list$genes,length))),o$ratios,resamples=20000,method=c("sd","cvar")[2],mode="none")
+  if (filehash) {
+    # store random resamples in filehash
+    # WARNING: This may be VERY large file. >50GB
+    resampleRandomConditions(geneSetSize=sort(unique(sapply(o$corem_list$genes,length))),
+                       o$ratios,resamples=CONDITIONRESAMPLES,method=CONDITIONMETHOD,mode="none")
+    o$corem_list$conditions <- mclapply(o$corem_list$corems,function(g) {
+      findCoremConditions(o$corem_list$genes[[g]],o$ratios,ratios.normalized=T,method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
+                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...)
+  } else {
+    # compute enrichments w/o storing in filehash
+    # find lengths of corems
+    c.len <- sapply(o$corem_list$genes,len)
+    c.len.unique <- unique(c.len)
+    o$corem_list$conditions <- mclapply(seq(1,length(c.len.unique),1),function(i){
+      if (i%%4 == 0) {
+        cat(paste(signif((i/length(c.len.unique))*100,2),"% complete\n",sep=""))
+      }
+      len = c.len.unique[i]
+      print(len)
+      # find corems with this length
+      c.tmp <- o$corem_list$corems[[which(c.len)==len]]
+      # resample genes 
+      lookup.table <- resampleRandomConditions
+    })
+  }
   
 }
 
