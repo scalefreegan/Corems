@@ -37,7 +37,7 @@ MINMOTIFSCORE=Inf
 OUTDIR="./out/"
 LINKCOMM.SCORE=0
 LINKCOMM.SIMTHRESINC=.1
-LINKCOMM.SIMSCORE=5
+LINKCOMM.SIMSCORE=3
 COREMSIZETHRESH = 3
 RDATANAME = "corems.RData"
 
@@ -58,7 +58,8 @@ runCorems <- function() {
   cat("Writing edge list\n")
   writeEdgeList(o$gBg.backbone)
   cat("Running corem detection\n")
-  o$link.community.threshold <- runCoremDetection()
+  runCoremDetection()
+  o$link.community.threshold <- chooseCutoff()
   cat("Reading in corems\n")
   # unload filehashRO
   unload("filehashRO")
@@ -81,13 +82,15 @@ loadCorems <- function() {
   # re.init filehash
   # unload filehashRO
   o$corems <- dbInit("./filehash/corem_filehash.dump")
+  return(o)
 }
 
 processCorems <- function(method=c("all","clean_density","clean_size")[2]) {
-  loadCorems()
+  o<-loadCorems()
   o$corem_list <- list()
   o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
-  o$corem_list$genes <- mclapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
+  o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
+  resampleConditions(geneSetSize=sort(unique(sapply(o$corem_list$genes,length))),o$ratios,resamples=20000,method=c("sd","cvar")[2],mode="none")
   
 }
 

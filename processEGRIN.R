@@ -167,6 +167,12 @@ runCoremDetection <- function(numGenes = dim(e$ratios[[1]])[1], dir = OUTDIR,s =
     invisible(NULL)
   })
   system("cat out.density_* > out.density")
+  setwd(cwd)
+}
+
+chooseCutoff <- function() {
+  cwd <- getwd()
+  setwd(OUTDIR)
   density <- read.table("out.density",header=F)
   def_map = c(3,5,7,8,9); names(def_map) <- c(1,2,5,3,4)
   ind <- as.integer(def_map[as.character(LINKCOMM.SIMSCORE)])
@@ -298,7 +304,7 @@ getRegulons <- function(geneName = "VNG0700G", regulons.table = regulons) {
   return(g) 
 }
 
-resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=1000,method=c("sd","c.var")[2],mode="none") {
+resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,method=c("sd","cvar")[2],mode="none") {
   require(multicore)
   unload("filehashRO")
   require(filehash)
@@ -310,35 +316,43 @@ resampleConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=1000,me
   if (method == "sd") {
     o$sd<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
-      print(len)
+      #print(len)
+      if (i%%10==0) {
+        cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
+      }
       i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
     }) 
     names(o$sd) <- geneSetSize
-  } else if (method == "c.var") {
+  } else if (method == "cvar") {
     o$cvar<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
-      print(len)
+      #print(len)
+      if (i%%10==0) {
+        cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
+      }
       i <- do.call(rbind,lapply(seq(1:resamples),function(j){cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)}))
     })
     names(o$cvar) <- geneSetSize
   }
-  return(o)
+  invisible(o)
 }
 
-getSignificantConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","c.var")[2],
-                                       all=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
+getSignificantConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
+                                       all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,...) {
   fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
   lookup.table <- dbInit(fn)
-  len = length(genes)
+  len = as.character(length(genes))
   if (method == "sd") {
-    lookup.ecdf <- apply(lookup.table[method][len],2,ecdf)
-    o <- sapply(apply(ratios[genes,],2,sd,na.rm=T),function(i){lookup.ecdf})  
-  } else if (method == "c.var") {
-    m <- abs(colMeans(ratios[genes,]))
-    m[which(m==0)] = 1e-6
-    var.m <- matrix(apply(ratios[genes,],2,sd)/m,nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
-    comp <- var.m>as.matrix(lookup.table)
-    o <- apply(comp,2,sum)/dim(comp)[1]
+    lookup.ecdf <- apply(lookup.table[[method]][[len]],2,ecdf)
+    val <- apply(ratios[genes,],2,sd,na.rm=T)
+    o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
+  } else if (method == "cvar") {
+    lookup.ecdf <- apply(lookup.table[[method]][[len]],2,ecdf)
+    val <- cvar(genes,conditions=colnames(ratios),ratios=ratios,mode="none")
+    o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
+  }
+  if (padjust) {
+    o <- p.adjust(o,method="BH")
   }
   if (!all) {
     # Only report conds with p<=pval
