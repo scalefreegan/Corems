@@ -337,7 +337,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
       colnames(i.2) <- colnames(i)
       i.2 <- as(i.2,"sparseMatrix")    
     }) 
-    names(o$sd) <- geneSetSize
+    names(o$sd) <- as.character(geneSetSize)
   } else if (method == "cvar") {
     o$cvar<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
@@ -356,13 +356,16 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
       colnames(i.2) <- colnames(i)
       i.2 <- as(i.2,"sparseMatrix")
     })
-    names(o$cvar) <- geneSetSize
+    names(o$cvar) <- as.character(geneSetSize)
   }
+  unload(filehash)
+  require(filehashRO)
   invisible(o)
 }
 
-findCoremConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
+findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
                                        all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
+  require(multicore)
   len = as.character(length(genes))
   if (filehash) {
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
@@ -399,6 +402,44 @@ findCoremConditions <- function(genes,ratios,ratios.normalized=F,method=c("sd","
     meanExp <- abs(colMeans(ratios[genes,names(o)]))
     meanExp <- which(meanExp>=diff.cutoff)
     o <- o[meanExp]
+  }
+  return(o)
+}
+
+findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
+                                    all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
+  # Corem struct is:
+  # env$corem_list
+  if (filehash) {
+    # store random resamples in filehash
+    # WARNING: This may be VERY large file. >50GB
+    if (is.null(lookup.table)) {
+      lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
+                             o$ratios,resamples=resamples,method=method,mode="none")
+    }
+    o <- mclapply(coremStruct$corems,function(g) {
+      findCoremConditions.ind(coremStruct$genes[[g]],o$ratios,ratios.normalized=T,method=method,resamples=resamples,
+                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=lookup.table)})
+    names(o) <- coremStruct$corems
+  } else {
+    ###
+    # UNFINISHED!!
+    ###
+    # compute enrichments w/o storing in filehash
+    # find lengths of corems
+    c.len <- sapply(coremStruct$genes,len)
+    c.len.unique <- unique(c.len)
+    o$corem_list$conditions <- mclapply(seq(1,length(c.len.unique),1),function(i){
+      if (i%%4 == 0) {
+        cat(paste(signif((i/length(c.len.unique))*100,2),"% complete\n",sep=""))
+      }
+      len = c.len.unique[i]
+      print(len)
+      # find corems with this length
+      c.tmp <- o$corem_list$corems[[which(c.len)==len]]
+      # resample genes 
+      lookup.table <- resampleRandomConditions
+    })
   }
   return(o)
 }

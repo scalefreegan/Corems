@@ -90,6 +90,7 @@ runCorems <- function() {
 loadEnv <- function() {
   load(RDATANAME)
   # re.init filehash
+  unload(filehash)
   require(filehashRO)
   require(data.table)
   if (file.exists("./filehash/gg_filehash.dump")) {
@@ -108,31 +109,11 @@ processCorems <- function(method=c("all","clean_density","clean_size")[2],fileha
   o$corem_list <- list()
   o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
   o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
-  if (filehash) {
-    # store random resamples in filehash
-    # WARNING: This may be VERY large file. >50GB
-    resampleRandomConditions(geneSetSize=sort(unique(sapply(o$corem_list$genes,length))),
-                       o$ratios,resamples=CONDITIONRESAMPLES,method=CONDITIONMETHOD,mode="none")
-    o$corem_list$conditions <- mclapply(o$corem_list$corems,function(g) {
-      findCoremConditions(o$corem_list$genes[[g]],o$ratios,ratios.normalized=T,method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
-                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...)})
-  } else {
-    # compute enrichments w/o storing in filehash
-    # find lengths of corems
-    c.len <- sapply(o$corem_list$genes,len)
-    c.len.unique <- unique(c.len)
-    o$corem_list$conditions <- mclapply(seq(1,length(c.len.unique),1),function(i){
-      if (i%%4 == 0) {
-        cat(paste(signif((i/length(c.len.unique))*100,2),"% complete\n",sep=""))
-      }
-      len = c.len.unique[i]
-      print(len)
-      # find corems with this length
-      c.tmp <- o$corem_list$corems[[which(c.len)==len]]
-      # resample genes 
-      lookup.table <- resampleRandomConditions
-    })
-  }
+  names(o$corem_list$genes) <- o$corem_list$corems
+  o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios,ratios.normalized=T,
+                                                       method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
+                                                       all=F,padjust=F,pval=0.05,enforce.diff=F,
+                                                       diff.cutoff=2,filehash=T,lookup.table=NULL)
   
 }
 
