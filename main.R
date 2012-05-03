@@ -44,6 +44,7 @@ RDATANAME = "corems.RData"
 CONDITIONRESAMPLES = 20000
 CONDITIONMETHOD = "cvar"
 CONDITIONFILEHASH = T
+COREMMETHOD = c("all","clean_density","clean_size")[2]
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 
@@ -90,7 +91,7 @@ runCorems <- function() {
 loadEnv <- function() {
   load(RDATANAME)
   # re.init filehash
-  unload(filehash)
+  unload("filehash")
   require(filehashRO)
   require(data.table)
   if (file.exists("./filehash/gg_filehash.dump")) {
@@ -104,16 +105,16 @@ loadEnv <- function() {
   return(o)
 }
 
-processCorems <- function(method=c("all","clean_density","clean_size")[2],filehash=CONDITIONFILEHASH) {
+processCorems <- function() {
   o<-loadEnv()
   o$corem_list <- list()
-  o$corem_list$corems <- unique(o$corems[[method]][,Community.ID])
-  o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[method]]))
+  o$corem_list$corems <- unique(o$corems[[COREMMETHOD]][,Community.ID])
+  o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[COREMMETHOD]]))
   names(o$corem_list$genes) <- o$corem_list$corems
   o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios,ratios.normalized=T,
                                                        method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
                                                        all=F,padjust=F,pval=0.05,enforce.diff=F,
-                                                       diff.cutoff=2,filehash=T,lookup.table=NULL)
+                                                       diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=NULL)
   
 }
 

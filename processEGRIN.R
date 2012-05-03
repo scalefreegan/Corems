@@ -417,9 +417,14 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
       lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
                              o$ratios,resamples=resamples,method=method,mode="none")
     }
-    o <- mclapply(coremStruct$corems,function(g) {
-      findCoremConditions.ind(coremStruct$genes[[g]],o$ratios,ratios.normalized=T,method=method,resamples=resamples,
-                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=lookup.table)})
+    o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
+      if (i%%10==0) {
+        cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
+      }
+      out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],o$ratios,ratios.normalized=T,method=method,resamples=resamples,
+                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=lookup.table)
+      return(out)
+      })
     names(o) <- coremStruct$corems
   } else {
     ###
