@@ -48,6 +48,9 @@ COREMMETHOD = c("all","clean_density","clean_size")[2]
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 
+require(multicore)
+options(cores=CORES)
+
 # load EGRIN env
 runCorems <- function() {
   #source("processEGRIN.R")
