@@ -375,13 +375,13 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
   }
   if (method == "sd") {
     # Make 0 values Inf -- from sparsification above
-    tmp.table = lookup.table[[method]][[len]]
+    tmp.table = as.matrix(lookup.table[[method]][[len]])
     tmp.table[which(tmp.table==0)] = Inf
     lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- apply(ratios[genes,],2,sd,na.rm=T)
     o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
   } else if (method == "cvar") {
-    tmp.table = lookup.table[[method]][[len]]
+    tmp.table = as.matrix(lookup.table[[method]][[len]])
     tmp.table[which(tmp.table==0)] = Inf
     lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- cvar(genes,conditions=colnames(ratios),ratios=ratios,mode="none")
