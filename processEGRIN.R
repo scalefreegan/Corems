@@ -386,6 +386,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
     lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- cvar(genes,conditions=colnames(ratios),ratios=ratios,mode="none")
     o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
+    names(o) <- names(val)
   }
   if (padjust) {
     o <- p.adjust(o,method="BH")
@@ -421,7 +422,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
-      if (i%%10==0) {
+      if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
       out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],ratios,T,method,resamples,
