@@ -114,7 +114,7 @@ processCorems <- function() {
   o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios,ratios.normalized=T,
                                                        method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
                                                        all=F,padjust=F,pval=0.05,enforce.diff=F,
-                                                       diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=NULL)
+                                                       diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=lookup.table)
   
 }
 

@@ -367,7 +367,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
                                        all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
   require(multicore)
   len = as.character(length(genes))
-  if (filehash) {
+  if (filehash&&is.null(lookup.table)) {
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
     lookup.table <- dbInit(fn)
   } else if (is.null(lookup.table)) {
@@ -407,22 +407,25 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
 }
 
 findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
-                                    all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
+                                    all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL) {
   # Corem struct is:
   # env$corem_list
+  require(multicore)
   if (filehash) {
     # store random resamples in filehash
     # WARNING: This may be VERY large file. >50GB
     if (is.null(lookup.table)) {
+      cat("Couldn't find precomputed resamples. Computing now. This might take awhile. \n")
       lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
                              o$ratios,resamples=resamples,method=method,mode="none")
-    }
+    } 
+    cat("Using user supplied precomputed resamples\n")
     o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
       if (i%%10==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
-      out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],o$ratios,ratios.normalized=T,method=method,resamples=resamples,
-                          all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=lookup.table)
+      out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],ratios,T,method,resamples,
+                          all,padjust,pval,enforce.diff,diff.cutoff,filehash,lookup.table=lookup.table)
       return(out)
       })
     names(o) <- coremStruct$corems
