@@ -28,6 +28,7 @@
 
 
 # PARAMS
+HALO = F
 BACKBONE.PVAL=0.05
 FULLY.CONNECTED=F 
 MULTICORE=T
@@ -83,6 +84,7 @@ runCorems <- function() {
   if (COREMBYSIZE) {
     o$corems$clean_size <- cleanCoremsBySize(o$corems$all)
   }
+  o$gg$gBg.backbone.corems <- coremsTOgbg(o$corems[[COREMMETHOD]])
   # reload filehashRO
   unload("filehash")
   require(filehashRO)
@@ -118,7 +120,7 @@ processCorems <- function() {
                                                        method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
                                                        all=F,padjust=F,pval=0.05,enforce.diff=F,
                                                        diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=lookup.table)
-  
+  save(o,file=RDATANAME)
 }
 
 analyzeCorems <- function() {

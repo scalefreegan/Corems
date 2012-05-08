@@ -52,6 +52,9 @@ make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,min
     if (i%%5000==0) {
       cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
     }
+    if (HAL) {
+      i <- names(clusterStack)[i]
+    }
     if (is.na(e$clusterStack[[i]]$resid)) {
         } else if (e$clusterStack[[i]]$resid<filt.resid) {
           if (is.na(e$clusterStack[[i]]$e.val)){
@@ -427,6 +430,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
       }
       out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],ratios,T,method,resamples,
                           all,padjust,pval,enforce.diff,diff.cutoff,filehash,lookup.table=lookup.table)
+      out <- out[!is.na(out)]
       return(out)
       })
     names(o) <- coremStruct$corems
