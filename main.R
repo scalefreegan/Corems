@@ -53,7 +53,7 @@ require(multicore)
 options(cores=CORES)
 
 # load EGRIN env
-runCorems <- function() {
+runCorems <- function(gBg=NULL) {
   #source("processEGRIN.R")
   o <- new.env(parent = baseenv())
   o$parameters <- lapply(params,function(i){eval(as.symbol(i))})
@@ -61,7 +61,9 @@ runCorems <- function() {
   system(paste("mkdir",OUTDIR,sep=" "))
   system(paste("mkdir filehash"))
   cat("Making gene-gene co-occurence matrix from cMonkey data\n")
-  gBg <- make.r.gBg()
+  if (is.null(gBg)){
+    gBg <- make.r.gBg()
+  }
   cat("Extracting backbone\n")
   gBg.backbone <- multiscaleBackbone(gBg)
   cat("Writing edge list\n")
