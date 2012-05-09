@@ -60,9 +60,11 @@ runCorems <- function(gBg=NULL) {
   names(o$parameters) <- params
   system(paste("mkdir",OUTDIR,sep=" "))
   system(paste("mkdir filehash"))
-  cat("Making gene-gene co-occurence matrix from cMonkey data\n")
   if (is.null(gBg)){
+    cat("Making gene-gene co-occurence matrix from cMonkey data\n")
     gBg <- make.r.gBg()
+  } else {
+    cat("Using user supplied gene-gene co-occurence matrix\n")
   }
   cat("Extracting backbone\n")
   gBg.backbone <- multiscaleBackbone(gBg)
