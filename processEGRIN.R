@@ -165,7 +165,7 @@ runCoremDetection <- function(numGenes = dim(gBg)[1], dir = OUTDIR,s = LINKCOMM.
     invisible(NULL)
   })
   system("cat out.tanimoto_* > out.tanimoto")
-  empty<-mclapply(seq(0,1,LINKCOMM.SIMTHRESINC),function(i){
+  empty<-mclapply(seq(0,1,LINKCOMM.SIMTHRESINC)[2:length(seq(0,1,LINKCOMM.SIMTHRESINC))],function(i){
     system(paste("cluster_communities out",i,sep=" "))
     invisible(NULL)
   })

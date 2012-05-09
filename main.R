@@ -53,7 +53,7 @@ require(multicore)
 options(cores=CORES)
 
 # load EGRIN env
-runCorems <- function(gBg=NULL) {
+runCorems <- function(gBg=NULL,ratios=NULL) {
   #source("processEGRIN.R")
   o <- new.env(parent = baseenv())
   o$parameters <- lapply(params,function(i){eval(as.symbol(i))})
@@ -92,7 +92,11 @@ runCorems <- function(gBg=NULL) {
   # reload filehashRO
   unload("filehash")
   require(filehashRO)
-  o$ratios <- normalizeRatios(e$ratios[[1]])
+  if (is.null(ratios)) {
+    o$ratios <- normalizeRatios(e$ratios[[1]])
+  } else {
+    o$ratios <- ratios
+  }
   save(o,file=RDATANAME)
   return(o)
 }
