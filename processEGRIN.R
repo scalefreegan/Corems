@@ -81,7 +81,7 @@ multiscaleBackbone <- function(gBg, pval=BACKBONE.PVAL,multicore=MULTICORE,makeF
   # gBg is any arbitrary matrix
   require(multicore)
   if (makeFullyConnected) {
-    k <- sum(apply(gBg,1,sum)>0)
+    k <- sum(apply(gBg,1,sum)>0)-1
   }
   # define uniform random integrand
   integrand <- function(x,k) {(1-x)^(k-2)}
@@ -146,7 +146,7 @@ writeEdgeList <- function(matrix,file=paste(OUTDIR,"out",sep=""), weighted=T) {
 #
 # Run Antoine's C++ corem detection code
 #
-runCoremDetection <- function(numGenes = dim(e$ratios[[1]])[1], dir = OUTDIR,s = LINKCOMM.SCORE) {
+runCoremDetection <- function(numGenes = dim(gBg)[1], dir = OUTDIR,s = LINKCOMM.SCORE) {
   require(multicore)
   cwd <- getwd()
   if (length(system("which adjmat2wpairs",inter=T))==0) {

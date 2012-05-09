@@ -71,7 +71,7 @@ runCorems <- function(gBg=NULL) {
   cat("Writing edge list\n")
   writeEdgeList(gBg.backbone)
   cat("Running corem detection\n")
-  runCoremDetection()
+  runCoremDetection(numGenes = dim(gBg)[1])
   o$link.community.threshold <- chooseCutoff()
   cat("Reading in corems\n")
   # unload filehashRO
