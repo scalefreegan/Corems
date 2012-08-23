@@ -52,9 +52,6 @@ make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,min
     if (i%%5000==0) {
       cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
     }
-    if (HAL) {
-      i <- names(clusterStack)[i]
-    }
     if (is.na(e$clusterStack[[i]]$resid)) {
         } else if (e$clusterStack[[i]]$resid<filt.resid) {
           if (is.na(e$clusterStack[[i]]$e.val)){
@@ -421,7 +418,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     if (is.null(lookup.table)) {
       cat("Couldn't find precomputed resamples. Computing now. This might take awhile. \n")
       lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
-                             o$ratios,resamples=resamples,method=method,mode="none")
+                             ratios,resamples=resamples,method=method,mode="none")
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
