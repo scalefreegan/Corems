@@ -312,8 +312,13 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
     unload("filehashRO")
     require(filehash)
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
-    dbCreate(fn)
-    o <- dbInit(fn)
+    if (file.exists(fn)) {
+      o <- dbInit(fn)
+      return(o)
+    } else {
+      dbCreate(fn)
+      o <- dbInit(fn)
+    }
   } else {
     o <- list()
   }
@@ -418,7 +423,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     if (is.null(lookup.table)) {
       cat("Couldn't find precomputed resamples. Computing now. This might take awhile. \n")
       lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
-                             ratios,resamples=resamples,method=method,mode="none")
+                             ratios,resamples=resamples,method=method,mode="none",filehash=filehash)
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
