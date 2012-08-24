@@ -369,10 +369,13 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
 }
 
 findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
-                                       all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
+                                       return.all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL,...) {
   require(multicore)
   genes <- intersect(genes,rownames(ratios))
   len = as.character(length(genes))
+  if (as.integer(len) < 3) {
+    return(NULL)
+  }
   if (filehash&&is.null(lookup.table)) {
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
     lookup.table <- dbInit(fn)
@@ -397,7 +400,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
   if (padjust) {
     o <- p.adjust(o,method="BH")
   }
-  if (!all) {
+  if (!return.all) {
     # Only report conds with p<=pval
     o <- o[o<=pval]
   }
@@ -414,7 +417,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
 }
 
 findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
-                                    all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL) {
+                                    return.all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL) {
   # Corem struct is:
   # env$corem_list
   require(multicore)
@@ -427,12 +430,15 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
                              ratios,resamples=resamples,method=method,mode="none",filehash=filehash)
     } 
     cat("Using user supplied precomputed resamples\n")
-    o <- mclapply(seq(1,length(coremStruct$corems)),function(i) {
+    o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
+      print(i)
       if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
-      out<-findCoremConditions.ind(coremStruct$genes[[coremStruct$corems[[i]]]],ratios,T,method,resamples,
-                          all,padjust,pval,enforce.diff,diff.cutoff,filehash,lookup.table=lookup.table)
+      out<-findCoremConditions.ind(genes=coremStruct$genes[[coremStruct$corems[[i]]]],ratios=ratios,
+                                   ratios.normalized=ratios.normalized,method=method,resamples=resamples,
+                                   return.all=return.all,padjust=padjust,pval=pval,enforce.diff=enforce.diff,
+                                   diff.cutoff=diff.cutoff,filehash=filehash,lookup.table=lookup.table)
       out <- out[!is.na(out)]
       return(out)
       })
