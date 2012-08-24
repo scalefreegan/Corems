@@ -371,6 +371,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
 findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
                                        all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL...) {
   require(multicore)
+  genes <- intersect(genes,rownames(ratios))
   len = as.character(length(genes))
   if (filehash&&is.null(lookup.table)) {
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
