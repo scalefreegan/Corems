@@ -125,7 +125,7 @@ processCorems <- function() {
   names(o$corem_list$genes) <- o$corem_list$corems
   o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios,ratios.normalized=T,
                                                        method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
-                                                       all=F,padjust=F,pval=0.05,enforce.diff=F,
+                                                       return.all=F,padjust=F,pval=0.05,enforce.diff=F,
                                                        diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=NULL)
   save(o,file=RDATANAME)
   return(o)
