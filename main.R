@@ -12,7 +12,8 @@
 ####################################################################################
 # [e] reference to EGRIN environment
 ####################################################################################
-# CUSTOMIZABLE PARAMETER DESCRIPTIONS####################################################################################
+# CUSTOMIZABLE PARAMETER DESCRIPTIONS
+####################################################################################
 # NOTE: set these in the file main.R
 # BACKBONE.PVAL [0.05] sig required by backbone extraction
 # FULLY.CONNECTED [F] assume fully connected graph for backbone extraction. 
