@@ -325,7 +325,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
   genePool <- rownames(ratios)
   geneSetSize <- as.character(geneSetSize)
   if (method == "sd") {
-    o$sd<-mclapply(seq(1,length(geneSetSize)),function(i) {
+    to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
       #print(len)
       if (i%%10==0) {
@@ -342,15 +342,21 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
       colnames(i.2) <- colnames(i)
       i.2 <- as(i.2,"sparseMatrix")    
     }) 
-    names(o$sd) <- as.character(geneSetSize)
+    names(to.r) <- as.character(geneSetSize)
   } else if (method == "cvar") {
-    o$cvar<-mclapply(seq(1,length(geneSetSize)),function(i) {
+    to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
       len = as.integer(geneSetSize[i])
       #print(len)
       if (i%%10==0) {
         cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
       }
-      i <- do.call(rbind,lapply(seq(1:resamples),function(j){cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)}))
+      i <- do.call(rbind,lapply(seq(1:resamples),function(j){
+        to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+        while (sum(is.na(to.r))==length(to.r)) {
+          to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+        }
+        return(to.r)
+        }))
       i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
         j <- i[,j]
         j.ecdf <- ecdf(j)
@@ -361,8 +367,9 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
       colnames(i.2) <- colnames(i)
       i.2 <- as(i.2,"sparseMatrix")
     })
-    names(o$cvar) <- as.character(geneSetSize)
+    names(to.r) <- as.character(geneSetSize)
   }
+  o[[method]] = to.r
   unload(filehash)
   require(filehashRO)
   invisible(o)
