@@ -2,7 +2,6 @@
 # Author: Aaron Brooks
 # Affiliation: Institute for Systems Biology, Seattle, WA
 # Date of creation: 04/19/2012
-# Last update: 04/19/2012
 ####################################################################################
 # DESCRIPTION
 ####################################################################################
@@ -310,74 +309,117 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
   require(Matrix)
   if (filehash) {
     unload("filehashRO")
+    unload("filehash")
     require(filehash)
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
     if (file.exists(fn)) {
-      o <- dbInit(fn)
-      return(o)
+      o <- dbInit(fn,type="RDS")
+      if (sum(colnames(ratios)%in%colnames(o[[names(o)[1]]])==F)>0) {
+        # missing some condtions. add them
+        genePool <- rownames(ratios)
+        geneSetSize <- names(o)
+        run = T
+        add.cond = T
+        add.size = F
+      } else if (sum(geneSetSize%in%names(o)==F)>0) {
+        # missing some sample sizes. add them
+        genePool <- rownames(ratios)
+        geneSetSize <- setdiff(as.character(geneSetSize),names(o))
+        run = T
+        add.cond = F
+        add.size = T
+      } else {
+        o <- dbInit(fn,type="RDS")
+        return(o)
+      }
     } else {
-      dbCreate(fn)
-      o <- dbInit(fn)
+      # make RDS type
+      dbCreate(fn,type="RDS")
+      o <- dbInit(fn,type="RDS")
+      run = T
+      add.cond = F
+      add.size = F
     }
   } else {
-    o <- list()
+    genePool <- rownames(ratios)
+    geneSetSize <- as.character(geneSetSize)
+    run = T
+    add.cond = F
+    add.size = F
   }
-  genePool <- rownames(ratios)
-  geneSetSize <- as.character(geneSetSize)
-  if (method == "sd") {
-    to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
-      len = as.integer(geneSetSize[i])
-      #print(len)
-      if (i%%10==0) {
-        cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
-      }
-      i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
-      i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
-        j <- i[,j]
-        j.ecdf <- ecdf(j)
-        # make everything above lowest 7.5% quantile = 0
-        j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
-        return(j)
-      }))
-      colnames(i.2) <- colnames(i)
-      i.2 <- as(i.2,"sparseMatrix")    
-    }) 
-    names(to.r) <- as.character(geneSetSize)
-  } else if (method == "cvar") {
-    to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
-      len = as.integer(geneSetSize[i])
-      #print(len)
-      if (i%%10==0) {
-        cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
-      }
-      i <- do.call(rbind,lapply(seq(1:resamples),function(j){
-        to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
-        while (sum(is.na(to.r))==length(to.r)) {
-          to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+  if (run) {
+    if (method == "sd") {
+      to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
+        len = as.integer(geneSetSize[i])
+        #print(len)
+        if (i%%10==0) {
+          cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
         }
-        return(to.r)
+        i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
+        i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+          j <- i[,j]
+          j.ecdf <- ecdf(j)
+          # make everything above lowest 7.5% quantile = 0
+          j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+          return(j)
         }))
-      i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
-        j <- i[,j]
-        j.ecdf <- ecdf(j)
-        # make everything above lowest 7.5% quantile = 0
-        j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
-        return(j)
-      }))
-      colnames(i.2) <- colnames(i)
-      i.2 <- as(i.2,"sparseMatrix")
-    })
-    names(to.r) <- as.character(geneSetSize)
+        colnames(i.2) <- colnames(i)
+        i.2 <- as(i.2,"sparseMatrix")
+      }) 
+      names(to.r) <- as.character(geneSetSize)
+    } else if (method == "cvar") {
+      to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
+        len = as.integer(geneSetSize[i])
+        #print(len)
+        if (i%%10==0) {
+          cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
+        }
+        i <- do.call(rbind,lapply(seq(1:resamples),function(j){
+          to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+          while (sum(is.na(to.r))==length(to.r)) {
+            to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+          }
+          return(to.r)
+        }))
+        i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+          j <- i[,j]
+          j.ecdf <- ecdf(j)
+          # make everything above lowest 7.5% quantile = 0
+          j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+          return(j)
+        }))
+        colnames(i.2) <- colnames(i)
+        i.2 <- as(i.2,"sparseMatrix")
+      })
+      names(to.r) <- as.character(geneSetSize)
+    }
+    if (add.cond) {
+      for (i in names(to.r)) {
+        tmp <- as.matrix(o[[i]])
+        tmp.2 <- as(cbind(tmp,as.matrix(to.r[[i]])),"sparseMatrix")
+        o[[i]] <- tmp.2
+      }
+    } else if (add.size){
+      for (i in names(to.r)) {
+        o[[i]] <- to.r[[i]]
+      }
+      } else {
+        for (i in names(to.r)) {
+          o[[i]] <- to.r[[i]]
+        }
+    }
+    unload(filehash)
+    require(filehashRO)
   }
-  o[[method]] = to.r
-  unload(filehash)
-  require(filehashRO)
   invisible(o)
 }
 
 findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
                                        return.all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL,...) {
   require(multicore)
+  #unload("filehashRO")
+  #require(filehash)
+  #require(filehashRO)
   genes <- intersect(genes,rownames(ratios))
   len = as.character(length(genes))
   if (as.integer(len) < 3) {
@@ -385,7 +427,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
   }
   if (filehash&&is.null(lookup.table)) {
     fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
-    lookup.table <- dbInit(fn)
+    lookup.table <- dbInit(fn,type="RDS")
   } else if (is.null(lookup.table)) {
     lookup.table <-resampleRandomConditions(geneSetSize=len,ratios,resamples,method,"none",F)
   }
@@ -397,7 +439,7 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
     val <- apply(ratios[genes,],2,sd,na.rm=T)
     o <- sapply(seq(1,length(val)),function(i){lookup.ecdf[[names(val)[i]]](val[i])})
   } else if (method == "cvar") {
-    tmp.table = as.matrix(lookup.table[[method]][[len]])
+    tmp.table = as.matrix(lookup.table[[len]])
     tmp.table[which(tmp.table==0)] = Inf
     lookup.ecdf <- apply(tmp.table,2,ecdf)
     val <- cvar(genes,conditions=colnames(ratios),ratios=ratios,mode="none")
@@ -423,11 +465,33 @@ findCoremConditions.ind <- function(genes,ratios,ratios.normalized=F,method=c("s
   return(o)
 }
 
+removeFromFilehash <- function(toRemove,what = c("Conditions","SampleSize")[1],method=c("sd","cvar")[2],resamples=20000) {
+  require(multicore)
+  unload("filehashRO")
+  unload("filehash")
+  require(filehash)
+  fn <- paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep="")
+  lookup.table <- dbInit(fn,type="RDS")
+  if (what == "Conditions") {
+    for (i in names(lookup.table)) {
+      to.remove <- intersect(toRemove,colnames(lookup.table[[i]]))
+      if (length(to.remove)>0) {
+        new.m <- lookup.table[[i]][,!colnames(lookup.table[[i]])%in%to.remove]
+        lookup.table[[i]] <- new.m
+      }
+    }
+  }
+  invisible(lookup.table)
+}
+
 findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,method=c("sd","cvar")[2],resamples=20000,
                                     return.all=F,padjust=F,pval=0.05,enforce.diff=F,diff.cutoff=2,filehash=T,lookup.table=NULL) {
   # Corem struct is:
   # env$corem_list
   require(multicore)
+  unload("filehashRO")
+  unload("filehash")
+  require(filehashRO)
   if (filehash) {
     # store random resamples in filehash
     # WARNING: This may be VERY large file. >50GB
@@ -438,7 +502,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
-      #print(i)
+      print(i)
       if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
