@@ -550,6 +550,50 @@ compareMotifs <- function(regulonMotifList,method=c("jaccard","cosine")[1]) {
   return(pairwise.motif.score)
 }
 
+compareMotifs.gene <- function(genes,pval=1e-6,count.cutoff=5,alt.annotation=F,...) {
+  # assumes egrin2 env loaded
+  require(multicore)
+  g.m <- mclapply(genes,function(i) {
+    to.r <- try(out$plot.promoter.architecture(i,dont.plot=T,verbose=F,p.value=pval,...))
+    #to.r <- try(out$plot.promoter.architecture(i,dont.plot=T,verbose=F,p.value=pval))
+    if (class(to.r)=="try-error") {
+      return(character())
+    } else {
+      to.r <- to.r$mot.tab[to.r$mot.tab>=count.cutoff]
+      return(to.r)
+    }
+  })
+  names(g.m) <- genes
+  # currently doesn't integrate counts - can think of a way to integrate in future
+  if (alt.annotation) {
+    # return annotation data frame
+    u.m <- unique(unlist(sapply(g.m,function(i)names(i))))
+    ord <- order(as.numeric(sapply(u.m,function(i)strsplit(i,split="_")[[1]][2])),decreasing=F)
+    u.m <- u.m[ord]
+    motif.annot <- as.data.frame(do.call(rbind,mclapply(genes,function(i){
+      to.r <- rep(0,length(u.m))
+      to.r[u.m%in%names(g.m[[i]])]=1
+      names(to.r)<-u.m
+      return(to.r)
+        })))
+    rownames(motif.annot) <- genes
+    return(motif.annot)
+  } else {
+    pairwise.motif.score <- do.call(cbind,mclapply(genes,function(i){
+      sapply(genes,function(j){
+        j<-length(intersect(names(g.m[[i]]),names(g.m[[j]])))/length(names(g.m[[i]]))
+        if (is.nan(j)) {
+          return(0)
+        } else {
+          return(j)
+        }
+      })
+    }))
+    colnames(pairwise.motif.score) <- genes
+    return(pairwise.motif.score)
+  }
+}
+
 combineMotifScore <- function(regulonMotifScoreList) {
   all.motifs <- unique(unlist(sapply(regulonMotifScoreList,rownames)))
   all.genes <- unique(unlist(sapply(regulonMotifScoreList,colnames)))

@@ -318,6 +318,8 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
         # missing some condtions. add them
         genePool <- rownames(ratios)
         geneSetSize <- names(o)
+        ratios <- ratios[,which(colnames(ratios)%in%colnames(o[[names(o)[1]]])==F)]
+        cat(paste("Adding following conditions to resample database:",paste(colnames(ratios),collapse="\n"),sep="\n"))
         run = T
         add.cond = T
         add.size = F
@@ -325,17 +327,30 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
         # missing some sample sizes. add them
         genePool <- rownames(ratios)
         geneSetSize <- setdiff(as.character(geneSetSize),names(o))
-        run = T
-        add.cond = F
-        add.size = T
+        # make sure they are size 3 or greater
+        geneSetSize <- geneSetSize[as.numeric(geneSetSize)>=3]
+        if (length(geneSetSize)>0) {
+          run = T
+          add.cond = F
+          add.size = T
+          cat(paste("Adding following gene set sizes to resample database:",paste(geneSetSize,collapse="\n"),sep="\n"))
+        } else {
+          run = F
+          add.cond = F
+          add.size = F
+          cat(paste("No additions necessay. Returned resample databse\n"))
+          return(o)
+        }
       } else {
         o <- dbInit(fn,type="RDS")
+        cat(paste("No additions necessay. Returned resample database\n"))
         return(o)
       }
     } else {
       # make RDS type
       dbCreate(fn,type="RDS")
       o <- dbInit(fn,type="RDS")
+      cat(paste("Creating resample database from scratch\n"))
       run = T
       add.cond = F
       add.size = F
@@ -408,7 +423,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
           o[[i]] <- to.r[[i]]
         }
     }
-    unload(filehash)
+    unload("filehash")
     require(filehashRO)
   }
   invisible(o)
@@ -502,7 +517,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
-      print(i)
+      #print(i)
       if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
