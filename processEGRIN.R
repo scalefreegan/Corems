@@ -320,6 +320,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
         geneSetSize <- names(o)
         ratios <- ratios[,which(colnames(ratios)%in%colnames(o[[names(o)[1]]])==F)]
         cat(paste("Adding following conditions to resample database:",paste(colnames(ratios),collapse="\n"),sep="\n"))
+        cat("\n")
         run = T
         add.cond = T
         add.size = F
@@ -349,6 +350,8 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
     } else {
       # make RDS type
       dbCreate(fn,type="RDS")
+      genePool <- rownames(ratios)
+      geneSetSize <- as.character(geneSetSize)
       o <- dbInit(fn,type="RDS")
       cat(paste("Creating resample database from scratch\n"))
       run = T

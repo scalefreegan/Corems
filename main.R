@@ -124,7 +124,7 @@ processCorems <- function() {
   o$corem_list$corems <- unique(o$corems[[COREMMETHOD]][,Community.ID])
   o$corem_list$genes <- lapply(o$corem_list$corems,function(i) getGenes(i,o$corems[[COREMMETHOD]]))
   names(o$corem_list$genes) <- o$corem_list$corems
-  o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios,ratios.normalized=T,
+  o$corem_list$conditions <- findCoremConditions.group(o$corem_list,o$ratios[,1:3],ratios.normalized=T,
                                                        method=CONDITIONMETHOD,resamples=CONDITIONRESAMPLES,
                                                        return.all=F,padjust=F,pval=0.05,enforce.diff=F,
                                                        diff.cutoff=2,filehash=CONDITIONFILEHASH,lookup.table=NULL)
