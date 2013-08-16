@@ -1356,9 +1356,9 @@ plotMotif <- function(motc,save=F,file="tmp.png") {
   e$viewPssm(pssm,main=names(m))
 }
 
-findJumpingGenes <- function(r=gBg_backbone_0.59_clean_list,ratios=ratios.norm) {
+findJumpingGenes <- function(r=o$corem_list,ratios=ratios.norm) {
   require(multicore)
-  regulons = r$regulons
+  regulons = r$corems
   # Compute overlap matrix
   m = t(combn(regulons,2))
   # compute num genes in overlap
@@ -1368,6 +1368,7 @@ findJumpingGenes <- function(r=gBg_backbone_0.59_clean_list,ratios=ratios.norm) 
   m = m[which(m[,3]>0),]
   # Calculate score, mean cvar
   cvar <- function(genes,conditions) {
+    genes <- intersect(rownames(ratios),genes)
     m <- abs(colMeans(ratios[genes,conditions,drop=F]))
     m[which(m==0)] = 1e-6
     var.m <- mean(apply(ratios[genes,conditions,drop=F],2,sd)/m)
@@ -1391,12 +1392,12 @@ findJumpingGenes <- function(r=gBg_backbone_0.59_clean_list,ratios=ratios.norm) 
       return(score)
     }
   }
-  score = unlist(lapply(seq(1:dim(m)[1]),function(i){i <- jScore(r$genes[[m[i,1]]],names(r$conditions.cvar[[m[i,1]]]),r$genes[[m[i,2]]],names(r$conditions.cvar[[m[i,2]]]))}))
+  score = unlist(lapply(seq(1:dim(m)[1]),function(i){i <- jScore(r$genes[[m[i,1]]],intersect(names(r$conditions[[m[i,1]]]),colnames(ratios)),r$genes[[m[i,2]]],intersect(names(r$conditions[[m[i,2]]]),colnames(ratios)))}))
   l.r1 <- unlist(lapply(seq(1:dim(m)[1]),function(i){length(r$genes[[m[i,1]]])}))
   l.r2 <- unlist(lapply(seq(1:dim(m)[1]),function(i){length(r$genes[[m[i,2]]])}))
   m <- cbind(m,score,l.r1,l.r2)
   m <- m[order(as.numeric(m[,4]),decreasing=T),]
-  colnames(m) <- c("Regulon1","Regulon2","Overlap","Score","#Genes1","#Genes2")
+  colnames(m) <- c("Corem1","Corem2","Overlap","Score","#Genes1","#Genes2")
   return(m)
 }
 
