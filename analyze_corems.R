@@ -1596,9 +1596,14 @@ plotGene.p.reg <- function(gene,p=p.coreg,ref=gBg_backbone_0.59_clean) {
   plot(g.p,col=id.col,pch=19,xlab="sorted gene index",ylab="conditional probability",main=gene)
 }
 
-calculateEigenGene <- function(regulon,ratios=ratios.norm,ref=gBg_backbone_0.59_clean_list) {
-  g <- ref$genes[[regulon]]
-  c <- names(ref$conditions.cvar[[regulon]])
+calculateEigenGene <- function(corem,ratios=ratios.norm,ref=gBg_backbone_0.59_clean_list,alt.c=F) {
+  g <- intersect(ref$genes[[corem]],rownames(ratios))
+  if (alt.c) {
+    conds <- intersect(alt.c,colnames(ratios))
+  } else {
+    conds <- names(ref$conditions.cvar[[regulon]])
+  }
+  
   exp.svd <- svd(ratios[g,c])
   # Take only first eigengene
   o <- list()
