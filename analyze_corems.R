@@ -1597,7 +1597,7 @@ plotGene.p.reg <- function(gene,p=p.coreg,ref=gBg_backbone_0.59_clean) {
 }
 
 calculateEigenGene <- function(corem,ratios=ratios.norm,ref=o$corem_list,alt.c=F,remove=c("genes","conditions")[1]) {
-  print(corem)
+  #print(corem)
   g <- intersect(ref$genes[[corem]],rownames(ratios))
   if (!is.logical(alt.c)) {
     conds <- intersect(alt.c,colnames(ratios))

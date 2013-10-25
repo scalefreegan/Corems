@@ -334,7 +334,7 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
           run = T
           add.cond = F
           add.size = T
-          cat(paste("Adding following gene set sizes to resample database:",paste(geneSetSize,collapse="\n"),sep="\n"))
+          cat(paste("Adding following gene set sizes to resample database:",paste(geneSetSize,collapse="\n"),sep="\n"),"\n")
         } else {
           run = F
           add.cond = F
@@ -520,7 +520,7 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
-      #print(i)
+      #print(length(coremStruct$genes[[coremStruct$corems[[i]]]]))
       if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
