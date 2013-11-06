@@ -25,6 +25,7 @@
 # LINKCOMM.SCORE [0] use link similarity def of (0) Ahn or (1) Kalinka
 # LINKCOMM.SIMTHRESINC [.1] amount to increment community detection threshold.
 # LINKCOMM.SIMSCORE [5] score used to evaluate global density of communities (1,2,3,4,5)
+# HAL is this Halobacterium ensemble?
 ####################################################################################
 
 
@@ -46,6 +47,7 @@ CONDITIONRESAMPLES = 20000
 CONDITIONMETHOD = "cvar"
 CONDITIONFILEHASH = T
 COREMMETHOD = c("all","clean_density","clean_size")[2]
+HAL = F
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 

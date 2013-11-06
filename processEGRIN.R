@@ -41,12 +41,17 @@
 # Transform cMonkey output into weighted adjacency matrix
 # co-occurence of genes in biclusters
 #
-make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,minMotifScore=MINMOTIFSCORE) {
+make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,minMotifScore=MINMOTIFSCORE,hal=HAL) {
   require(multicore)
   R.m = matrix(0,nrow=length(rownames(e$ratios[[1]])),ncol=length(rownames(e$ratios[[1]])))
   rownames(R.m) = rownames(e$ratios[[1]]); colnames(R.m) = rownames(e$ratios[[1]]) 
   l = length(e$clusterStack)
-  for(i in seq(1:length(e$clusterStack))) {
+  if (hal) {
+    iters <- names(e$clusterStack)
+  } else {
+    iters <- seq(1:length(e$clusterStack))
+  }
+  for(i in iters) {
     #print(i)
     if (i%%5000==0) {
       cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
