@@ -53,8 +53,10 @@ make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,min
   }
   for(i in iters) {
     #print(i)
-    if (i%%5000==0) {
-      cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
+    if (is.numeric(i)) {
+      if (i%%5000==0) {
+        cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
+      }
     }
     if (is.na(e$clusterStack[[i]]$resid)) {
         } else if (e$clusterStack[[i]]$resid<filt.resid) {
