@@ -524,6 +524,9 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
       cat("Couldn't find precomputed resamples. Computing now. This might take awhile. \n")
       lookup.table<-resampleRandomConditions(geneSetSize=sort(unique(sapply(coremStruct$genes,length))),
                              ratios,resamples=resamples,method=method,mode="none",filehash=filehash)
+      unload("filehashRO")
+      unload("filehash")
+      require(filehashRO)
     } 
     cat("Using user supplied precomputed resamples\n")
     o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
