@@ -168,8 +168,8 @@ analyzeCorems <- function() {
                ontology=ONTOLOGY,
                withParents=T, pval.correct=T,
                method=c("BH","bonferroni")[1],
-               return.all=F,c.tot = C.TOT))
-    }
+               return.all=F,c.tot = C.TOT)
+    })
     names(o$corem_list$environmental.ontology) <- o$corem_list$corems
   }
   save(o,file=RDATANAME)
