@@ -505,6 +505,8 @@ removeFromFilehash <- function(toRemove,what = c("Conditions","SampleSize")[1],m
         lookup.table[[i]] <- new.m
       }
     }
+  } else if (what =="SampleSize") {
+    system(paste("rm", paste(paste("./filehash/corem_",paste(method,resamples,"filehash",sep="_"),".dump",sep=""),"/25",sep=""),sep=" "))
   }
   invisible(lookup.table)
 }
@@ -531,13 +533,25 @@ findCoremConditions.group <- function(coremStruct,ratios,ratios.normalized=F,met
     cat("Using user supplied precomputed resamples\n")
     o <- lapply(seq(1,length(coremStruct$corems)),function(i) {
       #print(length(coremStruct$genes[[coremStruct$corems[[i]]]]))
+      #print(i)
       if (i%%100==0) {
         cat(paste(signif((i/length(coremStruct$corems))*100,2),"% complete\n",sep=""))
       }
-      out<-findCoremConditions.ind(genes=coremStruct$genes[[coremStruct$corems[[i]]]],ratios=ratios,
+      out<-try(findCoremConditions.ind(genes=coremStruct$genes[[coremStruct$corems[[i]]]],ratios=ratios,
                                    ratios.normalized=ratios.normalized,method=method,resamples=resamples,
                                    return.all=return.all,padjust=padjust,pval=pval,enforce.diff=enforce.diff,
-                                   diff.cutoff=diff.cutoff,filehash=filehash,lookup.table=lookup.table)
+                                   diff.cutoff=diff.cutoff,filehash=filehash,lookup.table=lookup.table))
+      if (class(out)=="try-error") {
+        # try to remove this gene set size from filehash and re-run
+        cat(paste("Removing SampleSize",length(coremStruct$genes[[coremStruct$corems[[i]]]]),"from the filehash\n",sep=" "))
+        removeFromFilehash(toRemove=length(coremStruct$genes[[coremStruct$corems[[i]]]]),what="SampleSize",method=method,resamples=resamples)
+        lookup.table<-resampleRandomConditions(geneSetSize=length(coremStruct$genes[[coremStruct$corems[[i]]]]),
+                                               ratios,resamples=resamples,method=method,mode="none",filehash=filehash)
+        out <- findCoremConditions.ind(genes=coremStruct$genes[[coremStruct$corems[[i]]]],ratios=ratios,
+                                       ratios.normalized=ratios.normalized,method=method,resamples=resamples,
+                                       return.all=return.all,padjust=padjust,pval=pval,enforce.diff=enforce.diff,
+                                       diff.cutoff=diff.cutoff,filehash=filehash,lookup.table=lookup.table)
+      }
       out <- out[!is.na(out)]
       return(out)
       })

@@ -25,7 +25,11 @@
 # LINKCOMM.SCORE [0] use link similarity def of (0) Ahn or (1) Kalinka
 # LINKCOMM.SIMTHRESINC [.1] amount to increment community detection threshold.
 # LINKCOMM.SIMSCORE [5] score used to evaluate global density of communities (1,2,3,4,5)
-# HAL is this Halobacterium ensemble?
+# HAL [F] is this Halobacterium ensemble?
+# CONDITION.ENRICHMENT [F] whether to run condition enrichment. Strictly require 2 files below
+#   ONTOLOGY [NULL] path to obo file
+#   ENV.ANNOTATIONS [NULL] list that maps conditions to ontology terms contained in obo file above
+#   C.TOT [NULL] optional. precompted number of conditions per term for multiple testing correction
 ####################################################################################
 
 
@@ -48,6 +52,12 @@ CONDITIONMETHOD = "cvar"
 CONDITIONFILEHASH = T
 COREMMETHOD = c("all","clean_density","clean_size")[2]
 HAL = F
+CONDITION.ENRICHMENT = F
+ONTOLOGY = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/ontology
+ENV.ANNOTATIONS = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/env.annotations.RData
+C.TOT = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/c.tot.RData
+
+
 
 params <- setdiff(ls()[grep("[[:upper:]]",ls())],ls()[grep("[[:lower:]]",ls())])
 
@@ -135,7 +145,35 @@ processCorems <- function() {
 }
 
 analyzeCorems <- function() {
-  
+  o<-loadEnv()
+  # If available run condition enrichment
+  if (CONDITION.ENRICHMENT) {
+    if (!is.null(ENV.ANNOTATIONS)) {
+      tmp.env.annotations <- new.env()
+      load(ENV.ANNOTATIONS,envir=tmp.env.annotations)
+      ENV.ANNOTATIONS <- eval(as.symbol(ls(tmp.env.annotations)[1]),envir=tmp.env.annotations)
+    }
+    if (!is.null(C.TOT)) {
+      tmp.c.tot <- new.env()
+      load(C.TOT, envir=tmp.c.tot)
+      C.TOT <- eval(as.symbol(ls(tmp.c.tot)[1]),envir=tmp.c.tot)
+    }
+    if (!is.null(ONTOLOGY)) {
+      ONTOLOGY <- makeConditionOntology(ONTOLOGY)
+    }
+    o$corem_list$environmental.ontology <-  lapply(seq(1,length(o$corem_list$corems)),function(i) {
+      print(i)
+      conditionEnrichment(conditions=names(o$corem_list$conditions[[o$corem_list$corems[i]]]),
+               annotations=ENV.ANNOTATIONS,
+               ontology=ONTOLOGY,
+               withParents=T, pval.correct=T,
+               method=c("BH","bonferroni")[1],
+               return.all=F,c.tot = C.TOT))
+    }
+    names(o$corem_list$environmental.ontology) <- o$corem_list$corems
+  }
+  save(o,file=RDATANAME)
+  return(o)
 }
 
 if (F) {

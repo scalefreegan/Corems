@@ -11,42 +11,42 @@ blue2yellow <- colorpanel(200,"blue","black","yellow")
 
 
 #Get genes from corem function
-getCoremGenes <- function(regulonID = "1", regulons.table = regulons) {
-  if (class(regulons.table)[1]=="data.table") {
+getCoremGenes <- function(coremID = "1", corem.table = corem) {
+  if (class(corem.table)[1]=="data.table") {
     require(data.table)
-    setkey(regulons.table,"Community.ID")
-    g <- regulons.table[regulonID,mult="all"]
+    setkey(corem.table,"Community.ID")
+    g <- corem.table[regulonID,mult="all"]
     g <- unique(c(as.character(g[,Gene1]),as.character(g[,Gene2])))
   } else {
-    g<-unique(c(as.character(regulons.table[which(regulons.table[,3]==regulonID),1]),
-                as.character(regulons.table[which(regulons.table[,3]==regulonID),2])))
+    g<-unique(c(as.character(corem.table[which(corem.table[,3]==regulonID),1]),
+                as.character(corem.table[which(corem.table[,3]==regulonID),2])))
   }
   g <- g[!is.na(g)]
   return(g) 
 }
 
-# Remove regulons with fewer than x genes
-cleanCoremsBySize <- function(regulons.table = regulons, threshold = 3,gene=F) {
+# Remove corems with fewer than x genes
+cleanCoremsBySize <- function(corem.table = corem, threshold = 3,gene=F) {
   require(multicore)
   require(data.table)
-  setkey(regulons.table,"Community.ID")
+  setkey(corem.table,"Community.ID")
   if (gene) {
     # By gene size
-    r <- as.character(unique(regulons.table[,Community.ID]))
-    r.len <- unlist(lapply(r,function(i){i<-length(getGenes(i,regulons.table))}))
+    r <- as.character(unique(corem.table[,Community.ID]))
+    r.len <- unlist(lapply(r,function(i){i<-length(getGenes(i,corem.table))}))
     names(r.len) <- r
     toRemove <- names(r.len)[which(r.len <= threshold)]
-    o <- regulons.table
+    o <- corem.table
     for (i in toRemove) {
       print(i)
       o <- o[-which(o[,Community.ID]==i),]  
     }
   } else {
     # By edges
-    r <- table(regulons.table[,Community.ID])
+    r <- table(corem.table[,Community.ID])
     r <- names(r[r<=threshold])
-    toRemove <- unlist(mclapply(r,function(i){i<-which(regulons.table[,Community.ID]==i)}))
-    o <- regulons.table
+    toRemove <- unlist(mclapply(r,function(i){i<-which(corem.table[,Community.ID]==i)}))
+    o <- corem.table
     o <- o[-toRemove,]
   }
   return(o)
@@ -54,46 +54,46 @@ cleanCoremsBySize <- function(regulons.table = regulons, threshold = 3,gene=F) {
 
 
 
-getRegulons <- function(geneName = "VNG0700G", regulons.table = regulons) {
-  if (class(regulons.table)[1]=="data.table") {
+getCorems <- function(geneName = "VNG0700G", corem.table = corem) {
+  if (class(corem.table)[1]=="data.table") {
     require(data.table)
-    setkey(regulons.table,Gene1)
-    g1 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
-    setkey(regulons.table,Gene2)
-    g2 <- unique(as.character(regulons.table[geneName,mult="all"][,Community.ID]))
+    setkey(corem.table,Gene1)
+    g1 <- unique(as.character(corem.table[geneName,mult="all"][,Community.ID]))
+    setkey(corem.table,Gene2)
+    g2 <- unique(as.character(corem.table[geneName,mult="all"][,Community.ID]))
     g <- unique(c(g1,g2))
-    setkey(regulons.table,Community.ID)
+    setkey(corem.table,Community.ID)
   } else {
-    g<-unique(c(as.numeric(regulons.table[which(regulons.table[,1]==geneName),3]),
-                as.numeric(regulons.table[which(regulons.table[,2]==geneName),3])))
+    g<-unique(c(as.numeric(corem.table[which(corem.table[,1]==geneName),3]),
+                as.numeric(corem.table[which(corem.table[,2]==geneName),3])))
   }
   g <- g[!is.na(g)]
   return(g) 
 }
 
-getRegulonEdges <- function(regulonID = "1", regulons.table = regulons) {
-  if (class(regulons.table)[1]=="data.table") {
+getCoremEdges <- function(coremID = "1", corem.table = corem) {
+  if (class(corem.table)[1]=="data.table") {
     require(data.table)
-    setkey(regulons.table,"Community.ID")
-    g <- regulons.table[as.character(regulonID),mult="all"]
+    setkey(corem.table,"Community.ID")
+    g <- corem.table[as.character(coremID),mult="all"]
     g <- cbind(as.character(g$"Gene1"),as.character(g$"Gene2"))
   } else {
-    g<-as.character(regulons.table[which(regulons.table[,3]==regulonID),c("Gene1","Gene2")])
+    g<-as.character(corem.table[which(corem.table[,3]==regulonID),c("Gene1","Gene2")])
   }
   return(g) 
 }
 
-getComembers <- function(geneName = "VNG0700G", regulons.table = regulons) {
-  g <- getRegulons(geneName,regulons.table)
-  o <- sapply(g,function(i){getGenes(i,regulons.table)})
+getComembers <- function(geneName = "VNG0700G", corem.table = corem) {
+  g <- getCorems(geneName,corem.table)
+  o <- sapply(g,function(i){getGenes(i,corem.table)})
   return(o)
 }
 
-compareRegulons <- function(regulon1=NULL,regulon2=NULL,regulons.table,byGene=T,runall=F,p.val=F,jaccard=T) {
+compareCorems <- function(regulon1=NULL,regulon2=NULL,corem.table,byGene=T,runall=F,p.val=F,jaccard=T) {
   if (byGene) {
     # Get genes
-    g1 <- getGenes(regulon1,regulons.table)
-    g2 <- getGenes(regulon2,regulons.table)
+    g1 <- getGenes(regulon1,corem.table)
+    g2 <- getGenes(regulon2,corem.table)
     # Calc jaccard similarity
     # o <- length(intersect(g1,g2))/length(unique(c(g1,g2)))
     # Using min -- to correct for different gene set sizes
@@ -108,76 +108,76 @@ compareRegulons <- function(regulon1=NULL,regulon2=NULL,regulons.table,byGene=T,
   } 
 }
 
-makeSubRegulonTable <- function(regulons,regulons.table) {
-  if (class(regulons.table)[1]=="data.table") {
-    o <- regulons.table[regulons,mult="all"]
+makeSubRegulonTable <- function(corem,corem.table) {
+  if (class(corem.table)[1]=="data.table") {
+    o <- corem.table[corem,mult="all"]
   } else {
-    index <- lapply(regulons,function(i){which(regulons.table[,3]==i)})
-    o <- regulons.table[as.integer(unlist(index)),]
+    index <- lapply(corem,function(i){which(corem.table[,3]==i)})
+    o <- corem.table[as.integer(unlist(index)),]
   }
   return(o)
 }
 
-compareAllRegulons <- function(regulons.table,p.val=T) {
+compareAllCorems <- function(corem.table,p.val=T) {
   require(multicore)
   require(data.table)
-  print("Comparing all regulons")
-  if (class(regulons.table)[1]=="data.table") {
-    setkey(regulons.table,Community.ID)
-    r.names <- unique(as.character(regulons.table[,Community.ID]))
+  print("Comparing all corems")
+  if (class(corem.table)[1]=="data.table") {
+    setkey(corem.table,Community.ID)
+    r.names <- unique(as.character(corem.table[,Community.ID]))
   } else {
-    r.names <- unique(regulons.table[,3])
+    r.names <- unique(corem.table[,3])
   }
-  regulons.mat <- matrix(0,nrow=length(r.names),ncol=length(r.names),dimnames=list(r.names,r.names))
-  arr.i <- which(upper.tri(regulons.mat),arr.ind =T)
-  arr.i2 <- which(upper.tri(regulons.mat))
+  corem.mat <- matrix(0,nrow=length(r.names),ncol=length(r.names),dimnames=list(r.names,r.names))
+  arr.i <- which(upper.tri(corem.mat),arr.ind =T)
+  arr.i2 <- which(upper.tri(corem.mat))
   val <- unlist(mclapply(seq(1,dim(arr.i)[1]), function(i){
     if(i%%100000==0){print(i)}
-    i <- compareRegulons(r.names[arr.i[i,1]],r.names[arr.i[i,2]],regulons.table,p.val=p.val)
+    i <- compareCorems(r.names[arr.i[i,1]],r.names[arr.i[i,2]],corem.table,p.val=p.val)
   }))
-  regulons.mat[arr.i2] <- val
-  regulons.mat[lower.tri(regulons.mat)] <- t(regulons.mat)[lower.tri(regulons.mat)]
-  diag(regulons.mat) <- 1
-  return(regulons.mat)
+  corem.mat[arr.i2] <- val
+  corem.mat[lower.tri(corem.mat)] <- t(corem.mat)[lower.tri(corem.mat)]
+  diag(corem.mat) <- 1
+  return(corem.mat)
 }
 
-clusterRegulons <- function(regulons.table, regulons.mat=NULL,method=c("merge","cluster")[1],pval=NULL,upper.tail=F) {
+clusterCorems <- function(corem.table, corem.mat=NULL,method=c("merge","cluster")[1],pval=NULL,upper.tail=F) {
   # Get gene overlap
-  if (is.null(regulons.mat)) {
+  if (is.null(corem.mat)) {
     print("Computing regulon similarity from scratch")
-    regulons.mat <- compareAllRegulons(regulons.table)
+    corem.mat <- compareAllCorems(corem.table)
   }
   if (method == "cluster") {
-    print("Clustering regulons")
-    # Clusters highly similar regulons
-    # Will reduce total number of regulons
+    print("Clustering corems")
+    # Clusters highly similar corems
+    # Will reduce total number of corems
     require(dynamicTreeCut)
-    regulons.hclust <- hclust(as.dist(1-regulons.mat))
-    regulons.hclust.cut <- cutreeDynamic(regulons.hclust)
+    corems.hclust <- hclust(as.dist(1-corem.mat))
+    corems.hclust.cut <- cutreeDynamic(corems.hclust)
     o <- list()
-    o$regulons <- unique(regulons.hclust.cut)
-    o$genes <- lapply(o$regulons,function(i){
-     index <- regulons.hclust$labels[which(regulons.hclust.cut==i)]
-     tmp.genes <- lapply(index,function(j){getGenes(j,regulons.table)})
+    o$corems <- unique(corems.hclust.cut)
+    o$genes <- lapply(o$corems,function(i){
+     index <- corems.hclust$labels[which(corems.hclust.cut==i)]
+     tmp.genes <- lapply(index,function(j){getGenes(j,corem.table)})
      tmp.genes <- unique(unlist(tmp.genes))
      i <- tmp.genes
     })
-    names(o$genes) <- o$regulons
+    names(o$genes) <- o$corems
   } else if (method == "merge") {
-    # Merge regulons with pval less than bonferonni corrected pval
-    # Get sub regulons.mat matrix given regulons.table
-    r <- as.character(unique(regulons.table[,Community.ID]))
-    regulons.mat <- regulons.mat[r,r]
-    print("Merging regulons")
+    # Merge corems with pval less than bonferonni corrected pval
+    # Get sub corems.mat matrix given corem.table
+    r <- as.character(unique(corem.table[,Community.ID]))
+    corem.mat <- corem.mat[r,r]
+    print("Merging corems")
     if (is.null(pval)) {
-      pval <- 0.05/dim(regulons.mat)[1]
+      pval <- 0.05/dim(corem.mat)[1]
     } else {
       pval <- pval
     }
     if (upper.tail) {
-      index <- which(regulons.mat>=pval,arr.ind=T)
+      index <- which(corem.mat>=pval,arr.ind=T)
     } else {
-      index <- which(regulons.mat<=pval,arr.ind=T)
+      index <- which(corem.mat<=pval,arr.ind=T)
     }
     o <- list()
     tmp.m <- vector(mode="integer",length=length(unique(as.vector(index))))
@@ -195,16 +195,16 @@ clusterRegulons <- function(regulons.table, regulons.mat=NULL,method=c("merge","
         tmp.m[as.character(index[i,1])] = tmp.m[as.character(index[i,2])]
       }
     }
-    names(tmp.m) <- unique(rownames(regulons.mat)[as.vector(index)])
-    o$regulons <- lapply(sort(unique(tmp.m)),function(i){i <- names(tmp.m)[which(tmp.m==i)]})
-    names(o$regulons) <- seq(1,length(o$regulons))
-    o$genes <- lapply(o$regulons,function(i){getGenes(i,regulons.table)})
+    names(tmp.m) <- unique(rownames(corem.mat)[as.vector(index)])
+    o$corems <- lapply(sort(unique(tmp.m)),function(i){i <- names(tmp.m)[which(tmp.m==i)]})
+    names(o$corems) <- seq(1,length(o$corems))
+    o$genes <- lapply(o$corems,function(i){getGenes(i,corem.table)})
   } 
   
   return(o)
 }
 
-clusterRegulons.2 <- function(geneList) {
+clusterCorems.2 <- function(geneList) {
   # Assumes that give gene list
   # if there is overlap in the geneList
   # these genes should be merged into
@@ -249,20 +249,20 @@ clusterRegulons.2 <- function(geneList) {
   return(o)
 }
 
-getRegulonHits <- function(geneList,regulons.table) {
-  regulons <- lapply(geneList,function(i){getRegulons(i,regulons.table)})
-  # tabulate regulons
-  regulons.t <- table(unlist(regulons))
-  regulons.size <- unlist(lapply(names(regulons.t),function(i){
-    g <- getGenes(i,regulons.table)
+getRegulonHits <- function(geneList,corem.table) {
+  corems <- lapply(geneList,function(i){getCorems(i,corem.table)})
+  # tabulate corems
+  corems.t <- table(unlist(corems))
+  corems.size <- unlist(lapply(names(corems.t),function(i){
+    g <- getGenes(i,corem.table)
     tmp.grep <- grep("VNG*",g)
     if (length(grep("_",g[tmp.grep]))>0) {
       tmp.grep <-tmp.grep[-grep("_",g[tmp.grep])]
     }
     i <- length(tmp.grep)
                           }))
-  names(regulons.size) <- names(regulons.t)
-  out <- sort(regulons.t[names(regulons.t)]/regulons.size[names(regulons.t)],decreasing=T)
+  names(corems.size) <- names(corems.t)
+  out <- sort(corems.t[names(corems.t)]/corems.size[names(corems.t)],decreasing=T)
 }
 
 getMI <- function(genes = c("VNG2126C", "VNG2624G", "VNG0700G"),MI.index = egrin2.mi, n = 100) {
@@ -304,32 +304,6 @@ getCor <- function(genes = c("VNG2126C", "VNG2624G", "VNG0700G"),
   return(o) 
 }
 
-cleanRegulons <- function(regulonList, cutoff=0.05) {
-  # Removes regulons from downstream analysis, 
-  # eg motif finding
-  # if pval of either MI enrichment OR cor does not pass 
-  # cutoff
-  # Requires certain structure of regulonList
-  pass <- c()
-  for (i in 1:length(regulonList$regulons)) {
-    #print(i)
-    if (regulonList$MI[[i]][["p.val"]] <= cutoff) {
-      pass <- append(pass,i)
-    }
-    if (regulonList$cor[[i]][["p.val"]] <= cutoff) {
-      pass <- append(pass,i)
-    }
-  }
-  pass <- unique(pass)
-  o <- regulonList
-  o$regulons <- o$regulons[pass]
-  o$genes <- o$genes[pass]
-  o$MI <- o$MI[pass]
-  o$cor <- o$cor[pass]
-  return(o)
-}
-
-
   
 plotHeatmap <- function(matrix,file="",cor=F,RowSideColors=rep("red",dim(matrix)[1]),scale="none",
                         dendrogram="row",cexRow=0.75,cexCol=0.75,...) {
@@ -350,7 +324,7 @@ plotHeatmap <- function(matrix,file="",cor=F,RowSideColors=rep("red",dim(matrix)
   }
 }
 
-getMotifs <- function(genes=NULL,regulon=NULL,regulons.table,cutoff=NULL) {
+getMotifs <- function(genes=NULL,regulon=NULL,corem.table,cutoff=NULL) {
   # Requires egrin2 to be loaded
   if (!is.null(regulon)) {
     g<-getGenes(regulon,regulon.table)
@@ -440,7 +414,7 @@ getMotifs <- function(genes=NULL,regulon=NULL,regulons.table,cutoff=NULL) {
   return(out)
 }
 
-getConditions <- function(genes=NULL,regulon=NULL,regulons.table,cutoff=NULL,pval=0.5,
+getConditions <- function(genes=NULL,regulon=NULL,corem.table,cutoff=NULL,pval=0.5,
                           enforce.diff=F,diff.cutoff=2,ratios=NULL,ratios.normalized=F) {
   # Requires egrin2 to be loaded
   if (!is.null(regulon)) {
@@ -719,17 +693,17 @@ plotExpression <- function(x,sort=NULL,mode=c(1)[1],toHighlight=NULL,colHighligh
 getSigCoexpression <- function(regulonNumbers,refObj=NULL,findRowsList=NULL, n = 20,
                                ratios=ratios,samples=NULL,test=c("residual","mi")[1]) {
   if (is.null(refObj)) {
-      print("You must provide ref object containing [...Regulons]$conditions and [...Regulons]$genes")
+      print("You must provide ref object containing [...Corems]$conditions and [...Corems]$genes")
       invisible(NULL)
     }
   # If unspecified, run findRows2 to get conditions most sig associated
-  # With all combinations of 3 regulons
+  # With all combinations of 3 corems
   if (is.null(findRowsList)) {
       findRowsList <- findRows2(regulonConditionList=refObj$conditions[regulonNumbers],method="all",n=n)
   }
   # Make and fill a matrix with p.vals from resampling
-  # Row = set of conditions, e.g. r1.r2.r3 is intersection of conditions assigned to all 3 regulons
-  # Col = set of genes, e.g. g1.g2.g3 is union of genes from all three regulons
+  # Row = set of conditions, e.g. r1.r2.r3 is intersection of conditions assigned to all 3 corems
+  # Col = set of genes, e.g. g1.g2.g3 is union of genes from all three corems
    # Set # resamples
   if (is.null(samples)) {
     samples <- (1/(0.05/(length(findRowsList)^2)))
@@ -783,7 +757,7 @@ getSigCoexpression <- function(regulonNumbers,refObj=NULL,findRowsList=NULL, n =
 
 getSigCoexpression.2 <- function(regulon,ratios,gBg_list = gBg_backbone_0.59_clean_list,
                                  mode=c("cvar","egrin2")[1],resamples=14340) {
-  # 14340 is number of resamples to hit bonferroni corrected pval given 717 regulons
+  # 14340 is number of resamples to hit bonferroni corrected pval given 717 corems
   randGene <- function(size.g) {
     o <- sample(rownames(ratios),size.g)
   }
@@ -1038,11 +1012,11 @@ plot.promoter.architecture.seq <- function( gene, n.motifs=10, return.em=T, wind
 }
 
 
-getSig <- function(regulon=NULL,genes=NULL,regulons.table=NULL,assoc=c("condition","motif")[1],n=1000,alt=T,pval=.05) {
+getSig <- function(regulon=NULL,genes=NULL,corem.table=NULL,assoc=c("condition","motif")[1],n=1000,alt=T,pval=.05) {
   # If regulon is input get genes in regulon. Requires regulon lookup table
   require(multicore)
   if (!is.null(regulon)) {
-    if (is.null(regulons.table)) {
+    if (is.null(corem.table)) {
       print("Must specific regulon table for lookup")
       return(NULL)
     } else {
@@ -1266,7 +1240,7 @@ sd.within <- function(matrixIn) {
   return(o)
 }
 
-getActiveRegulons <- function(condition,regulonConditionList,egrin=F) {
+getActiveCorems <- function(condition,regulonConditionList,egrin=F) {
   if (egrin) {
     o <- names(regulonConditionList)[unlist(lapply(seq(1:length(regulonConditionList)),
                                                  function(i){condition%in%rownames(regulonConditionList[[i]])}))]
@@ -1336,7 +1310,7 @@ conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
   return(o)
 }
 
-getActiveRegulons <- function(conditions,referenceConditionList=gBg_backbone_0.59_clean_list$conditions.cvar) {
+getActiveCorems <- function(conditions,referenceConditionList=gBg_backbone_0.59_clean_list$conditions.cvar) {
   lapply(conditions,function(i){
     i <- names(referenceConditionList)[which(unlist(lapply(seq(1:length(referenceConditionList)),function(j){
       j<-i%in%names(referenceConditionList[[j]])
@@ -1358,9 +1332,9 @@ plotMotif <- function(motc,save=F,file="tmp.png") {
 
 findJumpingGenes <- function(r=o$corem_list,ratios=ratios.norm) {
   require(multicore)
-  regulons = r$corems
+  corems = r$corems
   # Compute overlap matrix
-  m = t(combn(regulons,2))
+  m = t(combn(corems,2))
   # compute num genes in overlap
   overlap = unlist(lapply(seq(1:dim(m)[1]),function(i){i <- length(intersect(r$genes[[m[i,1]]],r$genes[[m[i,2]]]))}))
   m <- cbind(m,overlap)
@@ -1422,8 +1396,8 @@ plotJumpingGenes <- function(r1,r2,r=gBg_backbone_0.59_clean_list,ratios=ratios.
 }
 
 compareRegulonConditionality <- function(r=gBg_backbone_0.59_clean_list,ratios=ratios.norm) {
-  m <- matrix(0,nrow=length(r$regulons),ncol=length(colnames(ratios)),dimnames=list(r$regulons,colnames(ratios)))
-  for (regulon in r$regulons) {
+  m <- matrix(0,nrow=length(r$corems),ncol=length(colnames(ratios)),dimnames=list(r$corems,colnames(ratios)))
+  for (regulon in r$corems) {
     g <- r$genes[[regulon]]
     c <- names(r$conditions.cvar[[regulon]])
     exp <- colMeans(ratios[g,c,drop=F])
@@ -1562,8 +1536,8 @@ pCoReg <- function(r = gBg_backbone_0.59_clean_list,ref=gBg_backbone_0.59_clean)
   g.c<-t(combn(g,2))
   s <- mclapply(seq(1:dim(g.c)[1]),
               function(i){
-                r1 <- getRegulons(g.c[i,1],ref)
-                r2 <- getRegulons(g.c[i,2],ref)
+                r1 <- getCorems(g.c[i,1],ref)
+                r2 <- getCorems(g.c[i,2],ref)
                 r.c <- intersect(r1,r2)
                 if (length(r.c)>0) {
                   conds <- unique(unlist(sapply(r$conditions.cvar[r.c],names)))
@@ -1582,7 +1556,7 @@ plotGene.p.reg <- function(gene,p=p.coreg,ref=gBg_backbone_0.59_clean) {
   require(gplots)
   # Find nonzero xpression values
   g.p <- sort(p[gene,][p[gene,]>0])
-  r <- getRegulons(gene,ref)
+  r <- getCorems(gene,ref)
   r.g <- lapply(r,function(i){getGenes(i,ref)})
   p.regs <- lapply(names(g.p),function(i){
     i<-which(unlist(lapply(r.g,function(j){i%in%j})))})
@@ -1638,7 +1612,7 @@ calculateEigenGene <- function(corem,ratios=ratios.norm,ref=o$corem_list,alt.c=F
   }
 }
 
-conditionCoherenceTest <- function(regulonStruct=gBg_backbone_0.59_clean_list,cutoff=0.05,
+conditionCoherenceTest <- function(coremStruct=o$corem_list,cutoff=0.05,
                                    ratios=ratios.norm,method=c("sd","cvar")[2],type=c("egrin2","cvar")[1]) {
   # Find
   require(multicore)
@@ -1648,14 +1622,14 @@ conditionCoherenceTest <- function(regulonStruct=gBg_backbone_0.59_clean_list,cu
     var.m <- median(apply(ratios[genes,conditions,drop=F],2,sd)/m)
     return(var.m)
   }
-  r <- regulonStruct$regulons
+  r <- coremStruct$corems
   o <- unlist(mclapply(r,function(i){
-    g <- regulonStruct$genes[[i]]
+    g <- coremStruct$genes[[i]]
     if (type == "egrin2") {
-      c <- regulonStruct$conditions.egrin2[[i]]
+      c <- coremStruct$conditions.egrin2[[i]]
       c <- rownames(c)[c[,2]<cutoff]
     } else if (type == "cvar") {
-      c <- regulonStruct$conditions.cvar[[i]]
+      c <- coremStruct$conditions.cvar[[i]]
       c <- names(c)[c<cutoff]
     }
     if (length(c)==0) {
@@ -1672,54 +1646,15 @@ conditionCoherenceTest <- function(regulonStruct=gBg_backbone_0.59_clean_list,cu
   return(o)
 }
 
-runCoherence <- function(intervals=5,method=c("sd","cvar")[2],type=c("egrin2","cvar")[1],ratios=ratios.norm,
-                         regulonStruct=gBg_backbone_0.59_clean_list) {
-  if (type=="egrin2") {
-    minV = min(unlist(lapply(regulonStruct$conditions.egrin2,function(i){i=i[,2]})))
-    maxV = max(unlist(lapply(regulonStruct$conditions.egrin2,function(i){i=i[,2]})))
-  } else if (type=="cvar") {
-    minV = min(unlist(regulonStruct$conditions.cvar))
-    maxV = max(unlist(regulonStruct$conditions.cvar))
-  }
-  cutoffs = seq(minV,maxV,length.out=intervals)
-  o <- lapply(cutoffs, function(i) {
-    s <- conditionCoherenceTest(regulonStruct,i,ratios,method,type)
-    if (!is.null(s)) {
-      i <- c(median(s),mean(s),sd(s))
-    } 
-    return(i)
-  })
-  names(o) = cutoffs
-  return(o)
-}
- 
-plotGene.p.reg <- function(gene,p.coreg=p.coreg,ref=gBg_backbone_0.59_clean) {
-  require(gplots)
-  # Find nonzero xpression values
-  g.p <- sort(p.coreg[gene,][p.coreg[gene,]>0])
-  r <- getRegulons(gene,ref)
-  r.g <- lapply(r,function(i){getGenes(i,ref)})
-  p.regs <- lapply(names(g.p),function(i){
-    i<-which(unlist(lapply(r.g,function(j){i%in%j})))})
-  id <- sapply(p.regs,sum)
-  names(id) <- names(g.p)
-  colTable <- sort(table(id))
-  colPal <- c(brewer.pal(8,"Accent"),brewer.pal(8,"Dark2"),brewer.pal(12,"Paired"),brewer.pal(9,"Pastel1"),
-              brewer.pal(8,"Pastel2"),brewer.pal(9,"Set1"),brewer.pal(8,"Set2"),brewer.pal(12,"Set3"))
-  colRef <- sample(colPal,length(colTable)); names(colRef) <- names(colTable)
-  id.col <- unlist(lapply(id,function(i){colRef[which(names(colRef)==i)]}))
-  plot(g.p,col=id.col,pch=19,xlab="sorted gene index",ylab="conditional probability",main=gene)
-}
-
 writeMapEquation <- function(condition1,condition2=NULL,file="tmp.map",regCond=m,
                              ref=gBg_backbone_0.59_clean_list,ratios=ratios.norm) {
-  # load("/isb-1/R/egrin2/gBg_antoine/gBg_backbone_regulons.RData")
+  # load("/isb-1/R/egrin2/gBg_antoine/gBg_backbone_corems.RData")
   # load("/isb-1/R/egrin2/gBg_antoine/regulonConditionality/regCond.RData")
   # load("/isb-1/R/egrin2/egrin2_ratios.RData")
   # condition1 = "light2__1440m_vs_light1_3960m"
   # condition2 = "dark1__0240m_vs_NRC-1c"
   # writeMapEquation()
-  # get active regulons for this condition
+  # get active corems for this condition
   r <- names(regCond[,condition1])[regCond[,condition1]!=0]
   if (!is.null(condition2)) {
     r2 = names(regCond[,condition2])[regCond[,condition2]!=0]
@@ -1729,7 +1664,7 @@ writeMapEquation <- function(condition1,condition2=NULL,file="tmp.map",regCond=m
   eigen <- ref$eigengene[r]
   g.unique <- unique(unlist(g))
   g.unique.r <- lapply(g.unique,function(i){
-    r.tmp <- intersect(r,getRegulons(i,gBg_backbone_0.59_clean))
+    r.tmp <- intersect(r,getCorems(i,gBg_backbone_0.59_clean))
     s <- sapply(r.tmp,function(j){
       cor(ratios[i,names(eigen[[j]]$profile)],eigen[[j]]$profile)
     })
@@ -1798,22 +1733,22 @@ corem_coherence <- function(ref=gBg_backbone_0.59_clean_list,ratios=ratios.norm,
     i <- unlist(lapply(ids,function(j){names(groupID)[which(groupID==j)]}))
     return(i)
   })
-  names(full.conds) <- ref$regulons
-  cvar.test <- mclapply(ref$regulons,function(i){
+  names(full.conds) <- ref$corems
+  cvar.test <- mclapply(ref$corems,function(i){
     i <- cvar(ref$genes[[i]],full.conds[[i]]) 
   })
-  names(cvar.test) <- ref$regulons
+  names(cvar.test) <- ref$corems
   # resample random gene sets
-  cvar.resample <- mclapply(ref$regulons,function(i) {
+  cvar.resample <- mclapply(ref$corems,function(i) {
     out <- lapply(seq(1:resamples),function(j) {
       j <- cvar(sample(rownames(ratios),length(ref$genes[[i]])),full.conds[[i]])
     })
   })
-  names(cvar.resample) <- ref$regulons
+  names(cvar.resample) <- ref$corems
   out <- mclapply(names(cvar.test),function(i){
     i <- sum(cvar.test[[i]]>=cvar.resample[[i]])/length(cvar.resample[[i]])
   })
-  names(out) <- ref$regulons
+  names(out) <- ref$corems
   return(out)
 }
 
@@ -1826,7 +1761,7 @@ assessBrokenOperons <- function() {
     })
   tmp.operon.broken <- lapply(seq(1:length(tmp.operon)),function(i){
     r <- table(unlist(lapply(tmp.operon[[i]],function(j){
-      o<-getRegulons(j,gBg_backbone_0.59_clean)
+      o<-getCorems(j,gBg_backbone_0.59_clean)
       return(o)
     })))
     if (length(which(r<length(tmp.operon[[i]])))>0) {
@@ -2247,5 +2182,64 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
     write.table(motif.comp[[i]]$table,file = paste(outdir,"/motifs_posns.txt",sep=""),
                 append=T,row.names=F,col.names=T,sep="\t",quote=F)
   }
+}
+
+makeConditionOntology <- function(oboFile) {
+  require(ontoCAT)
+  o <- getOntology(oboFile)
+  return(o)
+}
+
+conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
+                                pval.correct=T,method=c("BH","bonferroni")[1],return.all=F,
+                                c.tot = NULL) { 
+  #library(rJava)
+  #options(java.parameters="-Xmx512")
+  #.jinit()
+  require(ontoCAT)
+  if (withParents) {
+    c.set<-lapply(annotations[conditions],function(i){
+      i <- unlist(lapply(i,function(j){
+        org <- j
+        j <- getAllTermParentsById(ontology,gsub(":","_",j))
+        j <- unlist(lapply(j,function(m){getAccession(m)}))
+        j <- c(j,gsub(":","_",org))
+      }))
+    })
+    c.set <- table(unlist(c.set))
+    if (is.null(c.tot)) {
+      c.tot<-lapply(annotations,function(i){
+        i <- unlist(lapply(i,function(j){
+          org <- j
+          j <- getAllTermParentsById(ontology,gsub(":","_",j))
+          j <- unlist(lapply(j,function(m){getAccession(m)}))
+          j <- c(j,gsub(":","_",org))
+        }))
+      })
+      c.tot <- table(unlist(c.tot))
+    } else {
+      c.tot = c.tot
+    }
+  } else {
+    # Determine how many times each term occurs
+    c.set <- table(unlist(annotations[conditions]))
+    names(c.set) <- gsub(":","_",names(c.set))
+    c.tot <- table(unlist(annotations))
+    names(c.tot) <- gsub(":","_",names(c.tot))
+  }
+  o <- unlist(lapply(names(c.set),function(i){
+    i <- phyper(c.set[i],c.tot[i],sum(c.tot)-c.tot[i],sum(c.set),lower.tail=F)
+  }))
+  # translate names
+  n <- unlist(lapply(names(c.set),function(i){getTermNameById(ontology,i)}))
+  names(o) <- n
+  if (pval.correct) {
+    p.adjust(o,method)
+  }
+  o <- sort(o)
+  if (!return.all) {
+    o <- o[o<0.05]
+  }
+  return(o)
 }
 
