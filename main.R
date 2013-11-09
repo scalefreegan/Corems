@@ -34,6 +34,7 @@
 
 
 # PARAMS
+# Params for Halo model
 BACKBONE.PVAL=0.05
 FULLY.CONNECTED=F 
 MULTICORE=T
@@ -51,11 +52,13 @@ CONDITIONRESAMPLES = 20000
 CONDITIONMETHOD = "cvar"
 CONDITIONFILEHASH = T
 COREMMETHOD = c("all","clean_density","clean_size")[2]
-HAL = F
-CONDITION.ENRICHMENT = F
-ONTOLOGY = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/ontology
-ENV.ANNOTATIONS = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/env.annotations.RData
-C.TOT = NULL #/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/c.tot.RData
+HAL = T
+CONDITION.ENRICHMENT = T
+ONTOLOGY = "/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/ontology"
+ENV.ANNOTATIONS = "/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/env.annotations.RData"
+C.TOT = "/docs/EGRIN2/new/Hal_ensemble_2/EnvironmentalOntology/c.tot.RData"
+GENE.ONTOLOGY = T
+GENE2ENTREZ = "/docs/EGRIN2/new/Hal_ensemble_2/hal_gene2entrez.RData"
 
 
 
@@ -167,10 +170,25 @@ analyzeCorems <- function() {
                annotations=ENV.ANNOTATIONS,
                ontology=ONTOLOGY,
                withParents=T, pval.correct=T,
-               method=c("BH","bonferroni")[1],
+               method=c("BH","bonferroni")[1],tmp.gene2entrez <- new.
                return.all=F,c.tot = C.TOT)
     })
     names(o$corem_list$environmental.ontology) <- o$corem_list$corems
+  }
+  if (GENE.ONTOLOGY) {
+    if (!is.null(GENE2ENTREZ)) {
+      tmp.gene2entrez <- new.env()
+      load(GENE2ENTREZ, envir=tmp.gene2entrez)
+      GENE2ENTREZ <- eval(as.symbol(ls(tmp.gene2entrez)[1]),envir=tmp.gene2entrez)
+    }
+   o$corem_list$geneontology <- lapply(seq(1,length(o$corem_list$corems))[1:50],function(i) {
+     print(i)
+     to.r <- lapply(c("BP","MF","CC"),function(j){getGO(genes=o$corem_list$genes[[o$corem_list$corems[i]]],
+                                                        gene2entrez=GENE2ENTREZ,class=j,return.all=F,pval=5)})
+     names(to.r) <- c("BP","MF","CC")
+     return(to.r)
+   })
+    names(o$corem_list$geneontology) <- o$corem_list$$corems
   }
   save(o,file=RDATANAME)
   return(o)

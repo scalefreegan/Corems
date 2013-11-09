@@ -2243,3 +2243,28 @@ conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
   return(o)
 }
 
+getGO <- function(genes,gene2entrez,class=c("BP","MF","CC")[1],return.all=F,pval=5) {
+  require(DAVIDQuery)
+  g <- gene2entrez[intersect(genes,names(gene2entrez))]
+  to.r <- try(DAVIDQuery(g,type="ENTREZ_GENE_ID",tool="chartReport",annot=paste("GOTERM_",class,"_FAT",sep=""),verbose=F,URLlengthLimit = 20004800,formatIt=T)$DAVIDQueryResult)
+  if (class(to.r)=="try-error") {
+    return(NULL)
+  } else {
+    if (!return.all) {
+      if (dim(to.r)[1]>0) {
+        if (to.r[1,"FDR"]=="FDR") {
+          to.r<-to.r[2:dim(to.r)[1],]
+        }
+        to.r <- to.r[]
+        to.r <- to.r[as.numeric(to.r[,"FDR"])<=pval,]
+        if (dim(to.r)[1]==0) {
+          to.r <- NULL
+        }
+      } else {
+        to.r <- NULL
+      }
+    }
+    return(to.r)
+  }
+}
+
