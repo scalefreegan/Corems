@@ -166,12 +166,13 @@ analyzeCorems <- function() {
     }
     o$corem_list$environmental.ontology <-  lapply(seq(1,length(o$corem_list$corems)),function(i) {
       print(i)
-      conditionEnrichment(conditions=names(o$corem_list$conditions[[o$corem_list$corems[i]]]),
+      to.r<-conditionEnrichment(conditions=names(o$corem_list$conditions[[o$corem_list$corems[i]]]),
                annotations=ENV.ANNOTATIONS,
                ontology=ONTOLOGY,
                withParents=T, pval.correct=T,
-               method=c("BH","bonferroni")[1],tmp.gene2entrez <- new.
+               method=c("BH","bonferroni")[1],
                return.all=F,c.tot = C.TOT)
+      return(to.r)
     })
     names(o$corem_list$environmental.ontology) <- o$corem_list$corems
   }
@@ -181,14 +182,14 @@ analyzeCorems <- function() {
       load(GENE2ENTREZ, envir=tmp.gene2entrez)
       GENE2ENTREZ <- eval(as.symbol(ls(tmp.gene2entrez)[1]),envir=tmp.gene2entrez)
     }
-   o$corem_list$geneontology <- lapply(seq(1,length(o$corem_list$corems))[1:50],function(i) {
+   o$corem_list$geneontology <- lapply(seq(1,length(o$corem_list$corems)),function(i) {
      print(i)
      to.r <- lapply(c("BP","MF","CC"),function(j){getGO(genes=o$corem_list$genes[[o$corem_list$corems[i]]],
                                                         gene2entrez=GENE2ENTREZ,class=j,return.all=F,pval=5)})
      names(to.r) <- c("BP","MF","CC")
      return(to.r)
    })
-    names(o$corem_list$geneontology) <- o$corem_list$$corems
+    names(o$corem_list$geneontology) <- o$corem_list$corems
   }
   save(o,file=RDATANAME)
   return(o)
