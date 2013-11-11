@@ -2190,25 +2190,16 @@ makeConditionOntology <- function(oboFile) {
   return(o)
 }
 
-conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
+conditionEnrichment <- function(conditions,annotations,ontology=NULL,withParents=F,
                                 pval.correct=T,method=c("BH","bonferroni")[1],return.all=F,
                                 c.tot = NULL) { 
   #library(rJava)
   #options(java.parameters="-Xmx512")
   #.jinit()
-  require(ontoCAT)
-  if (withParents) {
-    c.set<-lapply(annotations[conditions],function(i){
-      i <- unlist(lapply(i,function(j){
-        org <- j
-        j <- getAllTermParentsById(ontology,gsub(":","_",j))
-        j <- unlist(lapply(j,function(m){getAccession(m)}))
-        j <- c(j,gsub(":","_",org))
-      }))
-    })
-    c.set <- table(unlist(c.set))
-    if (is.null(c.tot)) {
-      c.tot<-lapply(annotations,function(i){
+  if (!is.null(ontology)) {
+    require(ontoCAT)
+    if (withParents) {
+      c.set<-lapply(annotations[conditions],function(i){
         i <- unlist(lapply(i,function(j){
           org <- j
           j <- getAllTermParentsById(ontology,gsub(":","_",j))
@@ -2216,23 +2207,41 @@ conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
           j <- c(j,gsub(":","_",org))
         }))
       })
-      c.tot <- table(unlist(c.tot))
+      c.set <- table(unlist(c.set))
+      if (is.null(c.tot)) {
+        c.tot<-lapply(annotations,function(i){
+          i <- unlist(lapply(i,function(j){
+            org <- j
+            j <- getAllTermParentsById(ontology,gsub(":","_",j))
+            j <- unlist(lapply(j,function(m){getAccession(m)}))
+            j <- c(j,gsub(":","_",org))
+          }))
+        })
+        c.tot <- table(unlist(c.tot))
+      } else {
+        c.tot = c.tot
+      }
     } else {
-      c.tot = c.tot
+      # Determine how many times each term occurs
+      c.set <- table(unlist(annotations[conditions]))
+      names(c.set) <- gsub(":","_",names(c.set))
+      c.tot <- table(unlist(annotations))
+      names(c.tot) <- gsub(":","_",names(c.tot))
     }
+    o <- unlist(lapply(names(c.set),function(i){
+      i <- phyper(c.set[i],c.tot[i],sum(c.tot)-c.tot[i],sum(c.set),lower.tail=F)
+    }))
+    # translate names
+    n <- unlist(lapply(names(c.set),function(i){getTermNameById(ontology,i)}))
+    names(o) <- n
   } else {
     # Determine how many times each term occurs
     c.set <- table(unlist(annotations[conditions]))
-    names(c.set) <- gsub(":","_",names(c.set))
     c.tot <- table(unlist(annotations))
-    names(c.tot) <- gsub(":","_",names(c.tot))
+    o <- unlist(lapply(names(c.set),function(i){
+      i <- phyper(c.set[i],c.tot[i],sum(c.tot)-c.tot[i],sum(c.set),lower.tail=F)
+    }))
   }
-  o <- unlist(lapply(names(c.set),function(i){
-    i <- phyper(c.set[i],c.tot[i],sum(c.tot)-c.tot[i],sum(c.set),lower.tail=F)
-  }))
-  # translate names
-  n <- unlist(lapply(names(c.set),function(i){getTermNameById(ontology,i)}))
-  names(o) <- n
   if (pval.correct) {
     p.adjust(o,method)
   }

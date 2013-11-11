@@ -182,14 +182,14 @@ analyzeCorems <- function() {
       load(GENE2ENTREZ, envir=tmp.gene2entrez)
       GENE2ENTREZ <- eval(as.symbol(ls(tmp.gene2entrez)[1]),envir=tmp.gene2entrez)
     }
-   o$corem_list$geneontology <- lapply(seq(1,length(o$corem_list$corems)),function(i) {
+   o$corem_list$gene.ontology <- lapply(seq(1,length(o$corem_list$corems)),function(i) {
      print(i)
      to.r <- lapply(c("BP","MF","CC"),function(j){getGO(genes=o$corem_list$genes[[o$corem_list$corems[i]]],
                                                         gene2entrez=GENE2ENTREZ,class=j,return.all=F,pval=5)})
      names(to.r) <- c("BP","MF","CC")
      return(to.r)
    })
-    names(o$corem_list$geneontology) <- o$corem_list$corems
+    names(o$corem_list$gene.ontology) <- o$corem_list$corems
   }
   save(o,file=RDATANAME)
   return(o)
