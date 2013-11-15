@@ -714,7 +714,7 @@ getSigCoexpression <- function(regulonNumbers,refObj=NULL,findRowsList=NULL, n =
     conds <- findRowsList[[i]]
     if (test == "mi") {
       if (!exists("aracneOnTheFly")) {
-          require("rARACNE.R")
+          require(rARACNE)
         }
       rats.sub <- ratios[,conds]
       mi.m <- aracneOnTheFly(dataMatrix=rats.sub,clean=T)
