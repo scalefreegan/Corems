@@ -41,15 +41,17 @@
 # Transform cMonkey output into weighted adjacency matrix
 # co-occurence of genes in biclusters
 #
-make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,minMotifScore=MINMOTIFSCORE,hal=HAL) {
-  require(multicore)
+make.r.gBg <- function(clusterStack = e$clusterStack,multicore=MULTICORE,filt.resid=RESID.FILTER,minMotifScore=MINMOTIFSCORE,hal=HAL) {
+  if (MULTICORE) {
+    require(multicore)
+  }
   R.m = matrix(0,nrow=length(rownames(e$ratios[[1]])),ncol=length(rownames(e$ratios[[1]])))
   rownames(R.m) = rownames(e$ratios[[1]]); colnames(R.m) = rownames(e$ratios[[1]]) 
-  l = length(e$clusterStack)
+  l = length(clusterStack)
   if (hal) {
-    iters <- names(e$clusterStack)
+    iters <- names(clusterStack)
   } else {
-    iters <- seq(1:length(e$clusterStack))
+    iters <- seq(1:length(clusterStack))
   }
   for(i in iters) {
     #print(i)
@@ -58,11 +60,11 @@ make.r.gBg <- function(clusterStack = e$clusterStack,filt.resid=RESID.FILTER,min
         cat(paste(signif((i/l)*100,2),"% complete\n",sep=""))
       }
     }
-    if (is.na(e$clusterStack[[i]]$resid)) {
-        } else if (e$clusterStack[[i]]$resid<filt.resid) {
-          if (is.na(e$clusterStack[[i]]$e.val)){
-          } else if (e$clusterStack[[i]]$e.val < minMotifScore) {
-            g<-t(combn(e$clusterStack[[i]]$rows,2))
+    if (is.na(clusterStack[[i]]$resid)) {
+        } else if (clusterStack[[i]]$resid<filt.resid) {
+          if (is.na(clusterStack[[i]]$e.val)){
+          } else if (clusterStack[[i]]$e.val < minMotifScore) {
+            g<-t(combn(clusterStack[[i]]$rows,2))
             R.m[g] = R.m[g]+1
             R.m[cbind(g[,2],g[,1])] = R.m[cbind(g[,2],g[,1])] + 1
           }
