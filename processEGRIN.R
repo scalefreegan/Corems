@@ -313,7 +313,7 @@ getcorems <- function(geneName = "VNG0700G", corems.table = corems) {
 }
 
 resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,
-                                     method=c("sd","cvar")[2],mode="none",filehash=T) {
+                                     mode="none",filehash=T,multicore=MULTICORE) {
   require(multicore)
   require(Matrix)
   if (filehash) {
@@ -375,50 +375,57 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
     add.size = F
   }
   if (run) {
-    if (method == "sd") {
-      to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
-        len = as.integer(geneSetSize[i])
-        #print(len)
-        if (i%%10==0) {
-          cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
-        }
-        i <- do.call(rbind,lapply(seq(1:resamples),function(j){apply(ratios[sample(genePool,len),colnames(ratios)],2,sd,na.rm=T)}))
-        i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
-          j <- i[,j]
-          j.ecdf <- ecdf(j)
-          # make everything above lowest 7.5% quantile = 0
-          j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
-          return(j)
-        }))
-        colnames(i.2) <- colnames(i)
-        i.2 <- as(i.2,"sparseMatrix")
-      }) 
-      names(to.r) <- as.character(geneSetSize)
-    } else if (method == "cvar") {
-      to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
-        len = as.integer(geneSetSize[i])
-        #print(len)
-        if (i%%10==0) {
-          cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
-        }
-        i <- do.call(rbind,lapply(seq(1:resamples),function(j){
-          to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
-          while (sum(is.na(to.r))==length(to.r)) {
-            to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+    if (multicore) {
+        to.r<-mclapply(seq(1,length(geneSetSize)),function(i) {
+          len = as.integer(geneSetSize[i])
+          #print(len)
+          if (i%%10==0) {
+            cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
           }
-          return(to.r)
-        }))
-        i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
-          j <- i[,j]
-          j.ecdf <- ecdf(j)
-          # make everything above lowest 7.5% quantile = 0
-          j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
-          return(j)
-        }))
-        colnames(i.2) <- colnames(i)
-        i.2 <- as(i.2,"sparseMatrix")
-      })
-      names(to.r) <- as.character(geneSetSize)
+          i <- do.call(rbind,lapply(seq(1:resamples),function(j){
+            to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+            while (sum(is.na(to.r))==length(to.r)) {
+              to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+            }
+            return(to.r)
+          }))
+          i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+            j <- i[,j]
+            j.ecdf <- ecdf(j)
+            # make everything above lowest 7.5% quantile = 0
+            j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+            return(j)
+          }))
+          colnames(i.2) <- colnames(i)
+          i.2 <- as(i.2,"sparseMatrix")
+        })
+        names(to.r) <- as.character(geneSetSize)
+      } else {
+        to.r<-lapply(seq(1,length(geneSetSize)),function(i) {
+          len = as.integer(geneSetSize[i])
+          #print(len)
+          if (i%%10==0) {
+            cat(paste(signif((i/length(geneSetSize))*100,2),"% complete\n",sep=""))
+          }
+          i <- do.call(rbind,lapply(seq(1:resamples),function(j){
+            to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+            while (sum(is.na(to.r))==length(to.r)) {
+              to.r <- cvar(genes=sample(genePool,len),conditions=colnames(ratios),ratios=ratios,mode=mode)
+            }
+            return(to.r)
+          }))
+          i.2 <- do.call(cbind,lapply(seq(1:dim(i)[2]),function(j){
+            j <- i[,j]
+            j.ecdf <- ecdf(j)
+            # make everything above lowest 7.5% quantile = 0
+            j[which(j>quantile(j.ecdf,probs=seq(0,1,.075))[2])] = 0
+            return(j)
+          }))
+          colnames(i.2) <- colnames(i)
+          i.2 <- as(i.2,"sparseMatrix")
+        })
+        names(to.r) <- as.character(geneSetSize)
+      }
     }
     if (add.cond) {
       for (i in names(to.r)) {
