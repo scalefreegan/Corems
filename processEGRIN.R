@@ -425,7 +425,6 @@ resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=2
           i.2 <- as(i.2,"sparseMatrix")
         })
         names(to.r) <- as.character(geneSetSize)
-      }
     }
     if (add.cond) {
       for (i in names(to.r)) {
