@@ -313,7 +313,7 @@ getcorems <- function(geneName = "VNG0700G", corems.table = corems) {
 }
 
 resampleRandomConditions <- function(geneSetSize=seq(3,200,1),ratios,resamples=20000,
-                                     mode="none",filehash=T,multicore=MULTICORE) {
+                                     mode="none",filehash=T,multicore=MULTICORE,method="cvar") {
   require(multicore)
   require(Matrix)
   if (filehash) {
