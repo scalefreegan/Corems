@@ -4,23 +4,26 @@
 
 # load condition annotation file from Dave 
 
-run <- function(file="./validation/gBg_stability.RData",type=c("runs","conditions")[1],n = 100, by = 10, rep = 10){
+run <- function(file="./validation/gBg_stability.RData",type=c("runs","conditions")[1],n = 110, by = 10, rep = 5,multicore=F){
   doBackbone <- function(i,j,cmonkey_annotations,allBCs,to.r) {
     cat(paste(i,"-",j,"\n"))
     # select conditions
     runs.out = sample(seq(1,length(cmonkey_annotations$clusts)),replace=F,size=i)
     bc.remain = allBCs[-as.numeric(unlist(sapply(cmonkey_annotations$clusts[runs.out],function(x){strsplit(as.character(x),split=";")[[1]]})))]
-    to.r$bcs[[j]] = bc.remain
-    to.r$frac[[j]] = round(length(bc.remain)/length(allBCs),digits=2)
+    to.r <- list()
+    to.r$bcs = bc.remain
+    to.r$frac = round(length(bc.remain)/length(allBCs),digits=2)
+    cat(paste(to.r$frac,"\n"))
     if (length(to.r$bcs)>0) {
       gBg <- make.r.gBg(clusterStack=e$clusterStack[as.numeric(sapply(strsplit(to.r$bcs,split="_"),"[",2))])
-      to.r$gBg[[j]] <- cor(as.vector(gBg),as.vector(o$gg$gBg))
-      gBg.backbone <- multiscaleBackbone(gBg,multicore=MULTICORE)
-      to.r$gBg.backbone[[j]] <- cor(as.vector(gBg.backbone),as.vector(o$gg$gBg.backbone))
+      to.r$gBg <- cor(as.vector(gBg),as.vector(o$gg$gBg))
+      gBg.backbone <- multiscaleBackbone(gBg,multicore=F)
+      to.r$gBg.backbone <- cor(as.vector(gBg.backbone),as.vector(o$gg$gBg.backbone))
       # write backbones to file
       write.table(gBg,file=paste("./validation/runStability_",i,"_gBg.txt",sep=""),col.names=T,row.names=T,sep="\t")
       write.table(gBg.backbone,file=paste("./validation/runStability_",i,"_gBg_backbone.txt",sep=""),col.names=T,row.names=T,sep="\t")
-      cat(paste(to.r$gBg[[j]],":",to.r$gBg.backbone[[j]],"\n"))
+      cat(paste(to.r$gBg,":",to.r$gBg.backbone,"\n"))
+      return(to.r)
     }
   }
 	root = "/home/abrooks/Documents/EGRIN2/Eco_ensemble_2"
@@ -44,8 +47,13 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
 		return(which(is.it))
 		})
 	names(cond2bc) <- all.conditions
-	allBCs = paste("BIC",seq(1,length(e$clusterStack),1),sep="_")
+	#allBCs = paste("BIC",seq(1,length(e$clusterStack),1),sep="_")
+  load("./validation/allBCs.RData")
   require(multicore)
+  source("./scripts/main.R")
+  source("./scripts/processEGRIN.R")
+  source("./scripts/analyze_corems.R")
+  o <- loadEnv()
   if (type == "conditions") {
     after.condition.removal <- lapply(seq(1,n,by),function(i){
       cat(paste(i,"\n"))
@@ -64,7 +72,7 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
           r$gBg.cor <- cor(as.vector(r$gBg),as.vector(o$gg$gBg))
           #r$gBg.w <- wilcox.test(as.vector(r$gBg),as.vector(o$gg$gBg))
           r$gBg.backbone <- multiscaleBackbone(r$gBg)
-          r$gBg.backbone.cor <- cor(as.vector(r$gBg.backbone),as.vector(o$gg$gBg))
+          r$gBg.backbone.cor <- cor(as.vector(r$gBg.backbone),as.vector(o$gg$gBg.backbone))
           #r$gBg.backbone.w <- wilcox.test(as.vector(r$gBg.backbone),as.vector(o$gg$gBg.backbone))
         }
         })
@@ -75,21 +83,19 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
   } else if (type == "runs") {
     # remove some number of runs, see how this affects backbone
     
-    after.run.removal <- lapply(seq(1,n,by),function(i){
+    after.run.removal <- lapply(rev(seq(1,n,by)),function(i){
       if (i>1) {
         i = i-1
       }
-      to.r <- list()
-      to.r$gBg <- list()
-      to.r$gBg.backbone <- list()
-      to.r$bcs = list()
-      to.r$frac = list()
       j = 1
+      to.r <- list()
       while (j<=rep) {
         tmp = try(doBackbone(i,j,cmonkey_annotations,allBCs,to.r))
         if (class(tmp)!="try-error") {
           j = j+1
-        } 
+        }  else {
+          to.r[[i]][[j]] <- tmp
+        }
       }
       save(to.r,file=paste("./validation/runStability_",i,".RData",sep=""))
       return(to.r)
