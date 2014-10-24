@@ -4,8 +4,8 @@
 
 # load condition annotation file from Dave 
 
-run <- function(file="./validation/gBg_stability.RData",type=c("runs","conditions")[1],n = 110, by = 10, rep = 5,multicore=F){
-  doBackbone <- function(i,j,cmonkey_annotations,allBCs,to.r) {
+run <- function(file="./validation/gBg_stability.RData",type=c("runs","conditions")[1],n = 104, by = 10, rep = 5,multicore=F,s=1){
+  doBackbone <- function(i,j,cmonkey_annotations,allBCs) {
     cat(paste(i,"-",j,"\n"))
     # select conditions
     runs.out = sample(seq(1,length(cmonkey_annotations$clusts)),replace=F,size=i)
@@ -20,8 +20,8 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
       gBg.backbone <- multiscaleBackbone(gBg,multicore=F)
       to.r$gBg.backbone <- cor(as.vector(gBg.backbone),as.vector(o$gg$gBg.backbone))
       # write backbones to file
-      write.table(gBg,file=paste("./validation/runStability_",i,"_gBg.txt",sep=""),col.names=T,row.names=T,sep="\t")
-      write.table(gBg.backbone,file=paste("./validation/runStability_",i,"_gBg_backbone.txt",sep=""),col.names=T,row.names=T,sep="\t")
+      write.table(gBg,file=paste("./validation/runStability/runStability_",i,"_gBg.txt",sep=""),col.names=T,row.names=T,sep="\t")
+      write.table(gBg.backbone,file=paste("./validation/runStability/runStability_",i,"_gBg_backbone.txt",sep=""),col.names=T,row.names=T,sep="\t")
       cat(paste(to.r$gBg,":",to.r$gBg.backbone,"\n"))
       return(to.r)
     }
@@ -83,21 +83,20 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
   } else if (type == "runs") {
     # remove some number of runs, see how this affects backbone
     
-    after.run.removal <- lapply(rev(seq(1,n,by)),function(i){
+    after.run.removal <- lapply(c(n+1,rev(seq(s,n,by))),function(i){
       if (i>1) {
         i = i-1
       }
       j = 1
       to.r <- list()
       while (j<=rep) {
-        tmp = try(doBackbone(i,j,cmonkey_annotations,allBCs,to.r))
+        tmp = try(doBackbone(i,j,cmonkey_annotations,allBCs))
         if (class(tmp)!="try-error") {
+          to.r[[as.character(i)]][[as.character(j)]] <- tmp
           j = j+1
-        }  else {
-          to.r[[i]][[j]] <- tmp
-        }
+        }  
       }
-      save(to.r,file=paste("./validation/runStability_",i,".RData",sep=""))
+      save(to.r,file=paste("./validation/runStability/runStability_",i,".RData",sep=""))
       return(to.r)
     })
     names(after.run.removal) = sapply(seq(1,n,by),function(i)if(i>1){return(i-1)}else{return(i)})
@@ -105,5 +104,32 @@ run <- function(file="./validation/gBg_stability.RData",type=c("runs","condition
   }
 }
 
+compileResults <- function(dir="./validation/runStability/") {
+  f = list.files(dir)
+  n = sort(unique(as.numeric(unlist(sapply(f,function(i){strsplit(strsplit(i,"_")[[1]][2],"\\.")[[1]][1]})))))
+  o <- lapply(n,function(i){
+    load(paste(dir,"runStability_",i,".RData",sep=""))
+    return(to.r[[1]])
+    })
+  names(o) <- n
+  return(o)
+}
+
+plotResults <- function(data) {
+  require(ggplot2)
+  require(reshape2)
+  x = as.numeric(unlist(lapply(names(data),function(i){sapply(data[[i]],function(j){return(i)})})))
+  x_frac = as.numeric(unlist(lapply(names(data),function(i){sapply(data[[i]],function(j){return(j$frac)})})))
+  y_gBg_cor = as.numeric(unlist(lapply(names(data),function(i){sapply(data[[i]],function(j){return(j$gBg)})})))
+  y_gBg_backbone_cor = as.numeric(unlist(lapply(names(data),function(i){sapply(data[[i]],function(j){return(j$gBg.backbone)})})))
+  # convert to data.frame
+  df <- data.frame(x=x,x_frac=x_frac,y_gBg_cor=y_gBg_cor,y_gBg_backbone_cor=y_gBg_backbone_cor)
+  df.2=melt(df,measure.vars=(c("y_gBg_cor","y_gBg_backbone_cor")))
+    c <- ggplot(df.2,aes(factor(round(1-x/105,2)),value,fill=variable,color=variable))  
+    p1<-c+geom_boxplot()+labs(x="Fraction of runs included",y="Network correlation")+scale_fill_discrete(name="Network",
+                         breaks=c("y_gBg_cor", "y_gBg_backbone_cor"),
+                         labels=c("gBg", "gBg backbone"))+expand_limits(y=c(0,1))
+    ggsave("./validation/runStability/stability.pdf", plot = p1)
+}
 
 

@@ -12,7 +12,7 @@ source("~/Documents/git/Corems/processEGRIN.R")
 load("DREAM5_normed_ratios.RData")
 
 # make a random condition filehash for DREAM5 data 
-resampleHash <- resampleRandomConditions(geneSetSize=seq(3,20,1),ratios,resamples=20000,method="cvar",mode="none",filehash=T)
+resampleHash <- resampleRandomConditions(geneSetSize=seq(151,200,1),ratios,resamples=20000,multicore=F,mode="none",filehash=T)
 
 # DREAM5 gBg compared to Distiller gBg
 # load data
