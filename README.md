@@ -1,3 +1,6 @@
+Corems
+===========
+
 R scripts for generating and analyzing corems from EGRIN2 ensemble run.
 
 More information available at: http://egrin2.systemsbiology.net/
