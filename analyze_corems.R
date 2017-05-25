@@ -22,7 +22,7 @@ getCoremGenes <- function(coremID = "1", corem.table = corem) {
                 as.character(corem.table[which(corem.table[,3]==regulonID),2])))
   }
   g <- g[!is.na(g)]
-  return(g) 
+  return(g)
 }
 
 # Remove corems with fewer than x genes
@@ -39,7 +39,7 @@ cleanCoremsBySize <- function(corem.table = corem, threshold = 3,gene=F) {
     o <- corem.table
     for (i in toRemove) {
       print(i)
-      o <- o[-which(o[,Community.ID]==i),]  
+      o <- o[-which(o[,Community.ID]==i),]
     }
   } else {
     # By edges
@@ -68,7 +68,7 @@ getCorems <- function(geneName = "VNG0700G", corem.table = corem) {
                 as.numeric(corem.table[which(corem.table[,2]==geneName),3])))
   }
   g <- g[!is.na(g)]
-  return(g) 
+  return(g)
 }
 
 getCoremEdges <- function(coremID = "1", corem.table = corem) {
@@ -80,7 +80,7 @@ getCoremEdges <- function(coremID = "1", corem.table = corem) {
   } else {
     g<-as.character(corem.table[which(corem.table[,3]==regulonID),c("Gene1","Gene2")])
   }
-  return(g) 
+  return(g)
 }
 
 getComembers <- function(geneName = "VNG0700G", corem.table = corem) {
@@ -105,7 +105,7 @@ compareCorems <- function(regulon1=NULL,regulon2=NULL,corem.table,byGene=T,runal
       o <- length(intersect(g1,g2))/min(length(g1),length(g2))
     }
     return(o)
-  } 
+  }
 }
 
 makeSubRegulonTable <- function(corem,corem.table) {
@@ -199,8 +199,8 @@ clusterCorems <- function(corem.table, corem.mat=NULL,method=c("merge","cluster"
     o$corems <- lapply(sort(unique(tmp.m)),function(i){i <- names(tmp.m)[which(tmp.m==i)]})
     names(o$corems) <- seq(1,length(o$corems))
     o$genes <- lapply(o$corems,function(i){getGenes(i,corem.table)})
-  } 
-  
+  }
+
   return(o)
 }
 
@@ -209,7 +209,7 @@ clusterCorems.2 <- function(geneList) {
   # if there is overlap in the geneList
   # these genes should be merged into
   # a single cluster
-  # Works if you've already filtered for 
+  # Works if you've already filtered for
   # conditional activity
   # Returns a length n list
   o <- vector("integer",length(unique(unlist(geneList))))
@@ -276,7 +276,7 @@ getMI <- function(genes = c("VNG2126C", "VNG2624G", "VNG0700G"),MI.index = egrin
     })
   o[["p.val"]] <- sum(o$mi.mean<=p.val)/n
   o[["resamples"]] <- n
-  return(o) 
+  return(o)
 }
 
 getCor <- function(genes = c("VNG2126C", "VNG2624G", "VNG0700G"),
@@ -301,10 +301,10 @@ getCor <- function(genes = c("VNG2126C", "VNG2624G", "VNG0700G"),
     })
   o[["p.val"]] <- sum(o$cor.mean<=p.val)/n
   o[["resamples"]] <- n
-  return(o) 
+  return(o)
 }
 
-  
+
 plotHeatmap <- function(matrix,file="",cor=F,RowSideColors=rep("red",dim(matrix)[1]),scale="none",
                         dendrogram="row",cexRow=0.75,cexCol=0.75,...) {
   require(gplots)
@@ -346,10 +346,10 @@ getMotifs <- function(genes=NULL,regulon=NULL,corem.table,cutoff=NULL) {
       } else {
        i <- i[i[,3]<=0.05,]
      }
-     return(i) 
+     return(i)
     }
   })
-  # Remove try-errors 
+  # Remove try-errors
   toRemove <- lapply(out$motifs,function(i){class(i)})
   toRemove <- which(unlist(toRemove)=="try-error")
   if (length(toRemove)>0) {
@@ -390,9 +390,9 @@ getMotifs <- function(genes=NULL,regulon=NULL,corem.table,cutoff=NULL) {
   out$motifs <- mots
   all.n <- unique(all)
   all <- vector(mode = "integer", length=length(all.n))
-  names(all) <- all.n 
+  names(all) <- all.n
   for (i in 1:length(mots)) {
-    all[names(mots[[i]])] <- all[names(mots[[i]])] + mots[[i]] 
+    all[names(mots[[i]])] <- all[names(mots[[i]])] + mots[[i]]
   }
   out$all.motifs <- sort(all,decreasing=T)
   # Combine motifs into common score
@@ -444,9 +444,9 @@ getConditions <- function(genes=NULL,regulon=NULL,corem.table,cutoff=NULL,pval=0
       return(NULL)
     }
     normRatios <- function(ratios) {
-      o <- t(scale(t(ratios), 
-                center = apply(ratios, 1, median, 
-                  na.rm = T), scale = apply(ratios, 
+      o <- t(scale(t(ratios),
+                center = apply(ratios, 1, median,
+                  na.rm = T), scale = apply(ratios,
                   1, sd, na.rm = T)))
       return(o)
     }
@@ -489,7 +489,7 @@ compareConditions <- function(regulonConditionList,method=c("jaccard","cosine")[
    }
   }
   return(pairwise.conds.score)
-}  
+}
 
 compareMotifs <- function(regulonMotifList,method=c("jaccard","cosine")[1]) {
   out<-list()
@@ -579,61 +579,61 @@ combineMotifScore <- function(regulonMotifScoreList) {
   out <- apply(out,2,function(i){i/sum(i)})
   return(out)
 }
-  
-getResid <- function (rowNames,colNames, rats,rats.inds = "COMBINED", varNorm = F, in.cols = T, 
+
+getResid <- function (rowNames,colNames, rats,rats.inds = "COMBINED", varNorm = F, in.cols = T,
                       row.score.func="orig") {
-    residual.submatrix <- function(rats, rows, cols, varNorm = F, 
+    residual.submatrix <- function(rats, rows, cols, varNorm = F,
         ...) {
         rows <- rows[rows %in% rownames(rats)]
         cols <- cols[cols %in% colnames(rats)]
-        if (length(rows) <= 1 || length(cols) <= 1) 
+        if (length(rows) <= 1 || length(cols) <= 1)
             return(1)
         rats <- rats[rows, cols]
-        if (is.vector(rats) || any(dim(rats) <= 1) || mean(is.na(rats)) > 
-            0.95) 
+        if (is.vector(rats) || any(dim(rats) <= 1) || mean(is.na(rats)) >
+            0.95)
             return(1)
         d.rows <- rowMeans(rats, na.rm = T)
         d.cols <- colMeans(rats, na.rm = T)
         d.all <- mean(d.rows, na.rm = T)
         rij <- rats + d.all
-        rij[, ] <- rij[, ] - matrix(d.cols, nrow = nrow(rij), 
+        rij[, ] <- rij[, ] - matrix(d.cols, nrow = nrow(rij),
             ncol = ncol(rij), byrow = T)
-        rij[, ] <- rij[, ] - matrix(d.rows, nrow = nrow(rij), 
+        rij[, ] <- rij[, ] - matrix(d.rows, nrow = nrow(rij),
             ncol = ncol(rij), byrow = F)
         average.r <- mean(abs(rij), na.rm = TRUE)
         if (varNorm) {
             maxRowVar <- attr(rats, "maxRowVar")
-            row.var <- mean(apply(rats, 1, var, use = "pairwise.complete.obs"), 
+            row.var <- mean(apply(rats, 1, var, use = "pairwise.complete.obs"),
                 na.rm = T)
-            if (is.na(row.var) || row.var > maxRowVar) 
+            if (is.na(row.var) || row.var > maxRowVar)
                 row.var <- maxRowVar
             average.r <- average.r/row.var
         }
         average.r
     }
     inds <- rats.inds
-    if (rats.inds[1] == "COMBINED") 
+    if (rats.inds[1] == "COMBINED")
         inds <- names(get("row.weights",envir=e))
     resids <- sapply(e$ratios[inds], function(rn) {
         if (row.score.func == "orig") {
-            if (in.cols) 
-                residual.submatrix(rn, rowNames, colNames, 
+            if (in.cols)
+                residual.submatrix(rn, rowNames, colNames,
                   varNorm = varNorm)
-            else residual.submatrix(rn, rowNames, colnames(rn)[!colnames(rn) %in% 
+            else residual.submatrix(rn, rowNames, colnames(rn)[!colnames(rn) %in%
                 colNames], varNorm = varNorm)
         }
         else {
             print("This is not supported at the moment")
-#             if (in.cols) 
-#                 mean(get.row.scores(k, for.rows = get.rows(k), 
+#             if (in.cols)
+#                 mean(get.row.scores(k, for.rows = get.rows(k),
 #                   ratios = rn, method = row.score.func))
-#             else mean(get.row.scores(k, cols = get.cols(k), for.rows = get.rows(k), 
+#             else mean(get.row.scores(k, cols = get.cols(k), for.rows = get.rows(k),
 #                 ratios = rn, method = row.score.func))
         }
     })
-    if (rats.inds[1] == "COMBINED") 
+    if (rats.inds[1] == "COMBINED")
         resids <- weighted.mean(resids, e$row.weights[inds], na.rm = T)
-    if (rats.inds[1] != "COMBINED" && length(resids) < length(inds) && 
+    if (rats.inds[1] != "COMBINED" && length(resids) < length(inds) &&
         all(is.na(resids))) {
         resids <- rep(NA, length(inds))
         names(resids) <- inds
@@ -751,7 +751,7 @@ getSigCoexpression <- function(regulonNumbers,refObj=NULL,findRowsList=NULL, n =
       }
     }
   }
- return(m3) 
+ return(m3)
  #return(tmpL)
 }
 
@@ -842,7 +842,7 @@ getMemeHitLocations <- function(regulon,refObj,distance=c(-20,500)) {
                                                     i[[1]]$posns[,"gene"])})
       motifs.to.consider <- names(unlist(motifs.to.consider))
       for (m in motifs.to.consider) {
-        g.m<-which(motif.cluster.info[[mc]][[m]][[1]]$posns[,"gene"]==g)                           
+        g.m<-which(motif.cluster.info[[mc]][[m]][[1]]$posns[,"gene"]==g)
         s.match <- as.character(motif.cluster.info[[mc]][[m]][[1]]$posns[g.m,"site"])
         pm <- motif.cluster.info[[mc]][[m]][[1]]$posns[g.m,"strand"]
         if (pm == "+") {
@@ -900,7 +900,7 @@ getMemeHitLocations <- function(regulon,refObj,distance=c(-20,500)) {
             right <- as.character(as.integer(right)-1)
           }
       }
-      
+
       if (strand == "R") {
         l.b <- left
         r.b <- right
@@ -920,9 +920,9 @@ getMemeHitLocations <- function(regulon,refObj,distance=c(-20,500)) {
 #         o[[g]]$consensus[[mc]] <- c.seq
 #       } else if (consensus < 0) {
 #         o[[g]]$consensus[[mc]] <- e$rev.comp(c.seq)
-#       } 
+#       }
       o[[g]]$consensus[[mc]] <- c.seq
-    }               
+    }
   }
 }
 setwd(wd)
@@ -985,7 +985,7 @@ plot.promoter.architecture.seq <- function( gene, n.motifs=10, return.em=T, wind
     # restrict motif clusters to those found by meme (mast hits is default)
     m <- getMotifs(gene)
     out <- out[c("ALL",names(m$all.motifs))]
-    out[["ALL"]][] = 0 
+    out[["ALL"]][] = 0
     for (i in 2:length(out)) {
       out[["ALL"]] = out[["ALL"]]+out[[i]]
     }
@@ -1097,7 +1097,7 @@ getSig <- function(regulon=NULL,genes=NULL,corem.table=NULL,assoc=c("condition",
   if (length(toRemove)>0) {
     o <- o[-toRemove]
   }
-  return(o)  
+  return(o)
 }
 
 randomConditions <- function(geneSetSize=seq(3,176,1),ratios,resamples=30000,method=c("sd","c.var")[1]) {
@@ -1178,7 +1178,7 @@ getSignificantConditions.2 <- function(genes,ratios,ratios.normalized=F,resample
   if (method == "sd") {
     var.m <- matrix(apply(ratios[genes,],2,sd),nrow=resamples,ncol=dim(ratios)[2],dimnames = list(seq(1,resamples,1),colnames(ratios)),byrow=T)
     comp <- var.m>lookup.table
-    o <- apply(comp,2,sum)/dim(comp)[1]  
+    o <- apply(comp,2,sum)/dim(comp)[1]
   } else if (method == "c.var") {
     m <- abs(colMeans(ratios[genes,]))
     m[which(m==0)] = 1e-6
@@ -1192,9 +1192,9 @@ getSignificantConditions.2 <- function(genes,ratios,ratios.normalized=F,resample
   }
   if (enforce.diff) {
     normRatios <- function(ratios) {
-      o <- t(scale(t(ratios), 
-                center = apply(ratios, 1, median, 
-                  na.rm = T), scale = apply(ratios, 
+      o <- t(scale(t(ratios),
+                center = apply(ratios, 1, median,
+                  na.rm = T), scale = apply(ratios,
                   1, sd, na.rm = T)))
       return(o)
     }
@@ -1259,7 +1259,7 @@ makeConditionOntology <- function(oboFile) {
 
 conditionEnrichment <- function(conditions,annotations,ontology,withParents=F,
                                 pval.correct=T,method=c("BH","bonferroni")[1],return.all=F,
-                                c.tot = NULL) { 
+                                c.tot = NULL) {
   #library(rJava)
   #options(java.parameters="-Xmx512")
   #.jinit()
@@ -1378,7 +1378,7 @@ findJumpingGenes <- function(r=o$corem_list,ratios=ratios.norm) {
 plotJumpingGenes <- function(r1,r2,r=gBg_backbone_0.59_clean_list,ratios=ratios.norm,...) {
   require(gplots)
   require(colorRamps)
-  g1 <- r$genes[[r1]] 
+  g1 <- r$genes[[r1]]
   g2 <- r$genes[[r2]]
   c1 <- names(r$conditions.cvar[[r1]])
   c2 <- names(r$conditions.cvar[[r2]])
@@ -1403,7 +1403,7 @@ compareRegulonConditionality <- function(r=gBg_backbone_0.59_clean_list,ratios=r
     exp <- colMeans(ratios[g,c,drop=F])
     exp[exp>0] = 1
     exp[exp<0] = -1
-    m[regulon,names(exp)] = exp  
+    m[regulon,names(exp)] = exp
   }
   return(m)
 }
@@ -1579,15 +1579,15 @@ calculateEigenGene <- function(corem,ratios=ratios.norm,ref=o$corem_list,alt.c=F
     conds <- names(ref$conditions.cvar[[regulon]])
   }
   if (remove=="genes") {
-    # remove genes with na values 
+    # remove genes with na values
     ratios <- ratios[g,conds,drop=F]
     to.remove <- which(apply(ratios[g,conds],1,function(i)sum(is.na(i)))>0)
     if (length(to.remove)>0) {
       ratios <- ratios[-to.remove,,drop=F]
       g <- g[-to.remove]
-    } 
+    }
   } else if (remove=="conditions") {
-    # remove conditions with na values 
+    # remove conditions with na values
     ratios <- ratios[g,conds,drop=F]
     to.remove <- which(apply(ratios[g,conds],1,function(i)sum(is.na(i)))>0)
     if (length(to.remove)>0) {
@@ -1636,7 +1636,7 @@ conditionCoherenceTest <- function(coremStruct=o$corem_list,cutoff=0.05,
       return(NULL)
     } else {
       if (method=="sd") {
-       i <- median(apply(ratios[g,c,drop=F],2,sd))  
+       i <- median(apply(ratios[g,c,drop=F],2,sd))
      } else if (method=="cvar") {
         i <- cvar(g,c)
       }
@@ -1735,7 +1735,7 @@ corem_coherence <- function(ref=gBg_backbone_0.59_clean_list,ratios=ratios.norm,
   })
   names(full.conds) <- ref$corems
   cvar.test <- mclapply(ref$corems,function(i){
-    i <- cvar(ref$genes[[i]],full.conds[[i]]) 
+    i <- cvar(ref$genes[[i]],full.conds[[i]])
   })
   names(cvar.test) <- ref$corems
   # resample random gene sets
@@ -1786,11 +1786,11 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
                    freq.cutoff=.05) {
   # Tries to find the best motif.cluster explaining coregulation of
   # genes in a corem.
-  # Uses intersection of user defined upper quantile of biclusters and mast hits 
+  # Uses intersection of user defined upper quantile of biclusters and mast hits
   # to find potentially relevant motif clusters
   # Requires egrin2 to be loaded
   # make sure envs are right
-  environment(get.mast) <- out
+  #environment(get.mast) <- out
   if (!is.null(regulon)) {
     g<-getGenes(regulon,corem.table)
   } else if (!is.null(genes)) {
@@ -1857,7 +1857,7 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
     #print(i)
     if (out$mast.motifs[[i]]==0) {
       return(0)
-    } 
+    }
     common.m <- intersect(unique(out$mast.motifs[[i]]$motif.clusters),rownames(out$bc.motifs))
     # score is fract m1 * fract m2
     if (length(common.m)>0) {
@@ -1938,7 +1938,7 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
       if (dim(out$mast.motifs[[i]][unique.m.i,])[1]>0) {
         return(out$mast.motifs[[i]][unique.m.i,])
       } else {
-        return(0) 
+        return(0)
       }
     } else {
       return(0)
@@ -1972,7 +1972,7 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
 # This needs to be attached into EGRIN2 env. Usually called "out"
 # function motif2 also needs to be in "out"
 
-make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,corem.table = NULL,outdir = NULL, 
+make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,corem.table = NULL,outdir = NULL,
                                    genesTohighlight=NULL,fitness=F,multicore=T,cores=8,altCoremPie=F,
                                    quant=.1,cutoff=NULL,window=1000,shift=375,motif.cutoff = 1e-6,
                                    freq.cutoff=.05,pie.pdf=F) {
@@ -1994,7 +1994,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       edge.ind<-rbind(edge.ind,cbind(as.matrix(corem.table[i,])[,2],"(pp)",as.matrix(corem.table[i,])[,3],"=",i))
     }
     edge.ind <- rbind(edge.ind,cbind(edge.ind[,3],edge.ind[,2],edge.ind[,1],edge.ind[,4:5]))
-    
+
     #   motif.comp <- list()
     #   for (i in corems) {
     #     print(i)
@@ -2025,24 +2025,24 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
     sub.m <- gBg_backbone[all.genes,all.genes]
   }
   dir.create(outdir)
-  
+
   graph <- graph.adjacency(sub.m,mode="undirected",weighted=T)
   write.graph(graph,file=paste(outdir,"/graph.graphml",sep=""),format="graphml")
-  
+
   # node mapping
   g2n <- paste("n",seq(0,(length(all.genes)-1)),sep=""); names(g2n) <- V(graph)$name
-  
+
   # write edge attribute corems
   # convert table names
   if (!is.null(corems)) {
     table.toWrite <- cbind(g2n[edge.ind[,1]],edge.ind[,2],g2n[edge.ind[,3]],edge.ind[,4:5])
-    
+
     write("Corem",file=paste(outdir,"/corem.txt",sep=""))
     write.table(table.toWrite,
                 file=paste(outdir,"/corem.txt",sep=""),
                 append=T,row.names=F,col.names=F,sep=" ",quote=F)
   }
-  
+
   if (fitness) {
     inChemgen<- which(apply(cbind(edge.ind[,1]%in%rownames(chemgen.cc),edge.ind[,3]%in%rownames(chemgen.cc)),1,sum)==2)
     edge.ind.sub <- edge.ind[inChemgen,]
@@ -2052,7 +2052,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
                 file=paste(outdir,"/fitness.txt",sep=""),
                 append=T,row.names=F,col.names=F,sep=" ",quote=F)
   }
-  
+
   # if present make node attributes for genesTohighlight
   if (!is.null(genesTohighlight)) {
     g <- intersect(genesTohighlight,names(g2n))
@@ -2062,22 +2062,22 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
                 file=paste(outdir,"/genesTohighlight.txt",sep=""),
                 append=T,row.names=F,col.names=F,sep=" ",quote=F)
   }
-  
+
   # Construct motif pie charts
   motifs <- unique(unlist(mclapply(motif.comp,function(i)names(i$common.motifs.all))))
   # order motif clusters
   m.order <- order(as.numeric(sapply(motifs,function(i)strsplit(i,split="_")[[1]][2])))
   motifs <- motifs[m.order]
   names(motifs) <- motifs; motifs[] <- 1/length(motifs)
-  
+
   b.colors <- c(brewer.pal(12,"Paired"),brewer.pal(8,"Dark2"),brewer.pal(9,"Pastel1"))
   motif.colors <- motifs; names(motif.colors) <- names(motifs); motif.colors[] <- b.colors
-  
+
   # Key
   pdf(paste(outdir,"/key.pdf",sep=""))
   pie(as.numeric(motifs),col=motif.colors,labels=names(motifs))
   dev.off()
-  
+
   # For genes
   gene.motif.prevalence <- matrix(0,nrow=length(all.genes),ncol=length(motifs),dimnames=list(all.genes,names(motifs)))
   for (i in names(motif.comp)) {
@@ -2089,7 +2089,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       }
     }
   }
-  
+
   # normalize rows
   gene.motif.prevalence <- t(apply(gene.motif.prevalence,1,function(i){return(i/sum(i))}))
   # check to see if need to retranspose
@@ -2099,7 +2099,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
   }
   # remove NaNs -- make 0
   gene.motif.prevalence[is.nan(gene.motif.prevalence)] <- 0
-  
+
   if (!is.null(corems)){
     # For corems
     if (altCoremPie == F) {
@@ -2121,7 +2121,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       # remove NaNs -- make 0
       gene.motif.prevalence.corem[is.nan(gene.motif.prevalence.corem)] <- 0
     } else if (altCoremPie == T) {
-      # This is a little hacked together. Would like to rework and make more robust. 
+      # This is a little hacked together. Would like to rework and make more robust.
       gene.motif.prevalence.corem <- matrix(0,nrow=length(motif.comp),ncol=length(motifs),dimnames=list(names(motif.comp),names(motifs)))
       for (i in names(motif.comp)) {
         for (j in names(motif.comp[[i]]$common.motifs.all)) {
@@ -2132,8 +2132,8 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       }
     }
   }
-  
-  
+
+
   dir.create(paste(outdir,"/pie/",sep=""))
   for (i in 1:dim(gene.motif.prevalence)[1]) {
     if (pie.pdf) {
@@ -2143,7 +2143,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       png(paste(outdir,"/pie/",rownames(gene.motif.prevalence)[i],".png",sep=""),
           type="quartz",bg="transparent",width=960,height=960,units="px",res=300)
     }
-    
+
     if (sum(gene.motif.prevalence[i,])>0) {
       pie(gene.motif.prevalence[i,names(motifs)],labels=NA,col=motif.colors)
     } else {
@@ -2151,7 +2151,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
     }
     dev.off()
   }
-  
+
   if (!is.null(corems)){
     for (i in corems) {
       if (pie.pdf) {
@@ -2160,7 +2160,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
       } else {
         png(paste(outdir,"/pie/",i,".png",sep=""),
             type="quartz",bg="transparent",width=960,height=960,units="px",res=300)
-      } 
+      }
       if (sum(gene.motif.prevalence.corem[i,])>0) {
         pie(gene.motif.prevalence.corem[i,names(motifs)],labels=NA,col=motif.colors)
       } else {
@@ -2174,7 +2174,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
   write.table(cbind(g2n[all.genes],"=",paste("file://",outdir,"/pie/",all.genes,".png",sep="")),
               file = paste(outdir,"/motifs.txt",sep=""),
               append=T,row.names=F,col.names=F,sep=" ",quote=F)
-  
+
   # write table of motif posns
   write("",file=paste(outdir,"/motifs_posns.txt",sep=""))
   for (i in seq(1,length(motif.comp))) {
@@ -2192,7 +2192,7 @@ makeConditionOntology <- function(oboFile) {
 
 conditionEnrichment <- function(conditions,annotations,ontology=NULL,withParents=F,
                                 pval.correct=T,method=c("BH","bonferroni")[1],return.all=F,
-                                c.tot = NULL) { 
+                                c.tot = NULL) {
   #library(rJava)
   #options(java.parameters="-Xmx512")
   #.jinit()
@@ -2276,4 +2276,3 @@ getGO <- function(genes,gene2entrez,class=c("BP","MF","CC")[1],return.all=F,pval
     return(to.r)
   }
 }
-
