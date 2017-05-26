@@ -1966,7 +1966,7 @@ get.mast <- function (gene, window = 125, shift = 75, e.value.cutoff = Inf,
     return(scans)
 }
 
-motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift=250,motif.cutoff = 1e-6,corem.table=o$corems,
+motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift=250,motif.cutoff = 1e-6,corem.table=o$corems$clean_density,
                    freq.cutoff=.05) {
   # Tries to find the best motif.cluster explaining coregulation of
   # genes in a corem.
@@ -2151,9 +2151,10 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
                                    freq.cutoff=.05,pie.pdf=F) {
   require(data.table)
   require(igraph)
-  require(multicore)
-  options(cores=cores)
+  require(parallel)
+  options(mc.cores=cores)
   require(RColorBrewer)
+  setkey(corem.table,"Community.ID")
   if (fitness) {
     load("/isb-1/R/ecoli/chemgen/chemgen.RData")
   }
@@ -2164,7 +2165,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
     # get edges to add
     edge.ind <- c()
     for (i in corems) {
-      edge.ind<-rbind(edge.ind,cbind(as.matrix(corem.table[i,])[,2],"(pp)",as.matrix(corem.table[i,])[,3],"=",i))
+      edge.ind<-rbind(edge.ind,cbind(as.matrix(corem.table[i,])[,"Gene1"],"(pp)",as.matrix(corem.table[i,])[,"Gene2"],"=",i))
     }
     edge.ind <- rbind(edge.ind,cbind(edge.ind[,3],edge.ind[,2],edge.ind[,1],edge.ind[,4:5]))
 
@@ -2178,7 +2179,7 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
         i <- motif2(corems[i],corem.table=corem.table,quant=quant,cutoff=cutoff,window=window,shift=shift,motif.cutoff = motif.cutoff,
                     freq.cutoff=freq.cutoff)
         return(i)
-      })
+      },mc.cores = cores)
     } else {
       motif.comp <- lapply(seq(1,length(corems)),function(i){
         i <- motif2(corems[i],corem.table=corem.table,quant=quant,cutoff=cutoff,window=window,shift=shift,motif.cutoff = motif.cutoff,
