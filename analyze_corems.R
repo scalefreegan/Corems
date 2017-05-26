@@ -1782,6 +1782,190 @@ assessBrokenOperons <- function() {
   })
 }
 
+get.mast <- function (gene, window = 125, shift = 75, e.value.cutoff = Inf,
+    p.value.cutoff = 1e-06, op.shift = F, include.bad = F, verbose = T,
+    biclust.filter = NULL, motif.filter = NULL, count.all = F) {
+    if (is.character(gene)) {
+        coo <- e$get.gene.coords(gene, op.shift = op.shift)
+        if (is.null(coo))
+            return(NULL)
+        print(coo)
+        st.st <- c(coo$start_pos, coo$end_pos)
+        if (coo$strand == "R")
+            st.st <- rev(st.st)
+        st.st <- st.st[1] + c(-window, +window) + (if (coo$strand ==
+            "R")
+            +shift
+        else -shift)
+        chr <- as.character(coo$contig)
+        names(st.st)[1] <- chr
+    } else{
+      print("Input must be gene")
+      return(NULL)
+    }
+    if (!exists("pssm.scans"))
+        pssm.scans <- get.pssm.scans()
+    if (p.value.cutoff < max(pssm.scans$pvals, na.rm = T))
+        pssm.scans <- pssm.scans[pvals <= p.value.cutoff]
+    if (!is.data.table(pssm.scans)) {
+        pssm.scans <- as.data.table(pssm.scans)
+        gc()
+        setkey(pssm.scans, bic, mots, gene, posns)
+    }
+    if (st.st[1] < 1)
+        st.st[1] <- 1
+    chr <- names(st.st)[1]
+    if (is.null(chr)) {
+        chr <- names(which(sapply(e$genome.info$genome.seqs,
+            nchar) == max(sapply(e$genome.info$genome.seqs, nchar))))
+        names(st.st)[1] <- chr
+    }
+    scans <- pssm.scans[gene == chr & posns %betw% (st.st +
+        c(-100, 100))]
+    scans <- unique(scans)
+    motifs <- unique(paste("MOT", scans$bic, abs(scans$mots),
+        sep = "_"))
+    if (length(motifs) <= 0)
+        stop("No motifs pass criteria (1)!")
+    if (verbose)
+        cat(length(motifs), "motifs.\n")
+    if (!is.null(biclust.filter)) {
+        motifs <- motifs[motifs %chin% unlist(get.motifs(biclust = biclust.filter))]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (2)")
+    }
+    if (!is.null(motif.filter)) {
+        motifs <- motifs[motifs %chin% motif.filter]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (3)")
+    }
+    if (!include.bad && exists("bad.clusts")) {
+        bad.ms <- unique(unlist(get.motifs(motif.clust = bad.clusts,
+            expand = F)))
+        motifs <- motifs[!motifs %chin% bad.ms]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (4)")
+    }
+    if (!is.infinite(e.value.cutoff) && !is.na(e.value.cutoff)) {
+        minfo <- get.motif.info(motifs = motifs)
+        e.vals <- do.call(c, lapply(minfo, function(tmp) {
+            if (is.null(tmp))
+                return(NA)
+            return(tmp$e.value)
+        }))
+        motifs <- motifs[e.vals <= e.value.cutoff]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (5)")
+    }
+    if (!include.bad) {
+        if (exists("coding.fracs")) {
+            frac.in.coding <- coding.fracs$all.fracs[motifs]
+        }
+        else {
+            coding.fracs <- get.motif.coding.fracs(motifs, verbose = T)
+            frac.in.coding <- coding.fracs$all.fracs
+        }
+        motifs.orig <- motifs
+        motifs <- motifs[!is.na(frac.in.coding) & frac.in.coding <
+            coding.fracs$mean.fracs - 0.01]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (6)")
+        rm(coding.seqs, scans, in.coding)
+    }
+    if (verbose)
+        cat(length(motifs), "motifs remain.\n")
+    mots <- strsplit(gsub("MOT_", "", motifs), "_")
+    bi <- as.integer(sapply(mots, "[", 1))
+    mo <- as.integer(sapply(mots, "[", 2))
+    scans <- pssm.scans[J(c(bi, bi), c(mo, -mo), chr), allow.cart = T]
+    scans <- scans[!is.na(scans$posns), ]
+    scans <- scans[scans$posns %betw% (st.st + c(-500, 500)),
+        ]
+    setkey(scans, "bic", "mots")
+    getEntropy <- function(pssm) {
+        pssm[pssm == 0] <- 1e-05
+        entropy <- apply(pssm, 1, function(i) -sum(i * log2(i)))
+        return(entropy)
+    }
+    seq <- substr(e$genome.info$genome.seqs[names(st.st)[1]],
+        st.st[1], st.st[2])
+    mat <- matrix(0, nrow = diff(st.st) + 1, ncol = 4)
+    rownames(mat) <- as.character(st.st[1]:st.st[2])
+    colnames(mat) <- e$col.let
+    scans <- scans[scans$posns %betw% (st.st + c(-100, 100))]
+    if (exists("motif.clusts")) {
+        mcs <- get.motif.clusters(motif = motifs)
+        mot.tab <- sort(table(unlist(mcs)))
+        mot.tab <- rev(mot.tab[mot.tab > 2])
+        print(mot.tab)
+    }
+    else {
+        mot.tab <- character()
+    }
+    if (length(mot.tab) > 10)
+        mot.tab <- mot.tab[1:9]
+    if (count.all)
+        mot.tab <- c(ALL = 0, mot.tab)
+    counts <- matrix(0, nrow = nrow(mat), ncol = length(mot.tab))
+    colnames(counts) <- names(mot.tab)
+    rownames(counts) <- rownames(mat)
+    if (nrow(scans) > 0) {
+        bics <- unique(scans$bic)
+        for (k in bics) {
+            if (verbose) {
+                wh <- which(bics == k)
+                if (wh%%100 == 1)
+                  cat(k, wh, length(bics), "\n")
+            }
+            sc <- scans[bic == k]
+            mots <- unique(abs(sc$mots))
+            for (m in mots) {
+                width <- motif.widths[k, m]
+                if (width <= 0)
+                  next
+                if (exists("mcs")) {
+                  mc <- mcs[[paste("MOT", k, m, sep = "_")]]
+                  mc <- mc[mc %chin% colnames(counts)]
+                }
+                pssm.orig <- get.motif.info(paste("MOT", k, m,
+                  sep = "_"))[[1]]$pssm
+                pssm.rev <- pssm.orig[nrow(pssm.orig):1, 4:1]
+                entr <- getEntropy(pssm.orig)
+                scale.e.orig <- (2 - entr)/2
+                scale.e.rev <- rev(scale.e.orig)
+                sc2 <- sc[abs(sc$mots) == m]
+                inds.pssm <- 1:nrow(pssm.orig)
+                for (i in 1:nrow(sc2)) {
+                  mot <- sc2$mots[i]
+                  if (sign(mot) == 1) {
+                    pssm <- pssm.orig
+                  }
+                  else if (sign(mot) == -1) {
+                    pssm <- pssm.rev
+                  }
+                  posn <- sc2$posns[i]
+                  inds <- (posn - 1):(posn - 2 + width)
+                  inds.1 <- inds.pssm[inds %betw% st.st]
+                  if (length(inds.1) <= 0)
+                    next
+                  inds <- inds[inds %betw% st.st]
+                  inds <- inds - st.st[1] + 1
+                  mat[inds, ] <- mat[inds, ] + pssm[inds.1, ]
+                  if (count.all)
+                    counts[inds, "ALL"] <- counts[inds, "ALL"] +
+                      1
+                  if (exists("mc") && length(mc) > 0 && !is.null(mc)) {
+                    counts[inds, mc] <- counts[inds, mc] + 1
+                  }
+                }
+            }
+        }
+    }
+    # return(invisible(list(motifs = motifs, scans = scans,
+    #     mat = mat, counts = counts, st.st = st.st, mot.tab = mot.tab)))
+    return(scans)
+}
+
 motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift=250,motif.cutoff = 1e-6,corem.table=o$corems,
                    freq.cutoff=.05) {
   # Tries to find the best motif.cluster explaining coregulation of
@@ -1810,25 +1994,14 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
   } else {
     out$bc.motifs <- out$bc.motifs[out$bc.motifs[,3]<=0.05,]
   }
-  out$mast.motifs <- lapply(g,function(i){
+  out$mast.motifs <- lapply(g,function(thisgene){
     #print(i)
-    n = i
-    genome.loc <- e$get.gene.coords(n,op.shift=F)
-    if (is.null(genome.loc)) {
-      return(0)
-    }
-    if (genome.loc$strand == "D") {
-      ss <- genome.loc$start_pos
-      i <- get.mast(ss,window=window,shift=shift,p.value.cutoff=motif.cutoff)
-    } else if (genome.loc$strand == "R") {
-      ss <- genome.loc$end_pos
-      i <- get.mast(ss,window=window,shift=shift,p.value.cutoff=motif.cutoff)
-    }
+    i <- get.mast(thisgene,window=window,shift=shift,p.value.cutoff=motif.cutoff)
     i <- as.data.frame(i)
     #m <- agglom(i,"motif.cluster","bicluster,motif","motif")
     if (dim(i)[1]>0) {
       motclust <- sapply(seq(1,dim(i)[1]),function(row) {
-        return(try(unlist(get.motif.clusters(paste("MOT",i[row,1],abs(i[row,2]),sep="_")))))
+        return(try(unlist(get.motif.clusters(paste("MOT",i[row,"bic"],abs(i[row,"mots"]),sep="_")))))
       })
       empty.ind <- sapply(motclust,is.null)
       i <- i[!empty.ind,]
@@ -2275,4 +2448,360 @@ getGO <- function(genes,gene2entrez,class=c("BP","MF","CC")[1],return.all=F,pval
     }
     return(to.r)
   }
+}
+
+plot.promoter.architecture <- function (gene, window = 125, shift = 75, e.value.cutoff = Inf,
+    p.value.cutoff = 1e-05, op.shift = F, include.bad = F, verbose = T,
+    biclust.filter = NULL, motif.filter = NULL, type = c("mast",
+        "meme", "fimo"), dont.plot = F, count.all = F, plot.sig.line = NA,
+    ...)
+{
+    if (is.character(gene)) {
+        coo <- e$get.gene.coords(gene, op.shift = op.shift)
+        if (is.null(coo))
+            return(NULL)
+        print(coo)
+        st.st <- c(coo$start_pos, coo$end_pos)
+        if (coo$strand == "R")
+            st.st <- rev(st.st)
+        st.st <- st.st[1] + c(-window, +window) + (if (coo$strand ==
+            "R")
+            +shift
+        else -shift)
+        chr <- as.character(coo$contig)
+        names(st.st)[1] <- chr
+    }
+    else {
+        if (length(gene) >= 2)
+            st.st <- gene
+        else if (length(gene) == 1)
+            st.st <- gene + c(-1, 1) * window/2
+    }
+    if (type == "mast") {
+        if (!exists("pssm.scans"))
+            pssm.scans <- get.pssm.scans()
+        if (p.value.cutoff < max(pssm.scans$pvals, na.rm = T))
+            pssm.scans <- pssm.scans[pvals <= p.value.cutoff]
+        if (!is.data.table(pssm.scans)) {
+            pssm.scans <- as.data.table(pssm.scans)
+            gc()
+            setkey(pssm.scans, bic, mots, gene, posns)
+        }
+    }
+    else if (type == "meme") {
+        if (!exists("meme.hits")) {
+            meme.hits <- get.meme.genome.positions()
+        }
+        meme.hits <- subset(meme.hits, p.value <= p.value.cutoff)
+        meme.hits <- as.data.table(meme.hits)
+        gc()
+        setkey(meme.hits, bic, mot, gene, genome.posns)
+    }
+    else if (type == "fimo") {
+        if (!exists("fimo.out"))
+            load("filehash/fimo_out_1e-06.RData")
+        fimo.out <- subset(fimo.out, `p-value` <= p.value.cutoff)
+    }
+    if (st.st[1] < 1)
+        st.st[1] <- 1
+    chr <- names(st.st)[1]
+    if (is.null(chr)) {
+        chr <- names(which(sapply(e$genome.info$genome.seqs,
+            nchar) == max(sapply(e$genome.info$genome.seqs, nchar))))
+        names(st.st)[1] <- chr
+    }
+    if (type == "mast") {
+        scans <- pssm.scans[gene == chr & posns %betw% (st.st +
+            c(-100, 100))]
+        scans <- unique(scans)
+        motifs <- unique(paste("MOT", scans$bic, abs(scans$mots),
+            sep = "_"))
+    }
+    else if (type == "meme") {
+        chr2 <- chr
+        rm(chr)
+        scans <- meme.hits[chr == chr2 & genome.posns %betw%
+            (st.st + c(-1000, 1000))]
+        chr <- chr2
+        rm(chr2)
+        scans <- unique(scans)
+        motifs <- unique(paste("MOT", scans$bic, abs(scans$mot),
+            sep = "_"))
+    }
+    else if (type == "fimo") {
+        scans <- fimo.out[Seq == chr & Start %betw% (st.st +
+            c(-100, 100))]
+        scans <- unique(scans)
+        motifs <- unique(paste("MOT", scans$bic, scans$mot, sep = "_"))
+    }
+    if (length(motifs) <= 0)
+        stop("No motifs pass criteria (1)!")
+    if (verbose)
+        cat(length(motifs), "motifs.\n")
+    if (!is.null(biclust.filter)) {
+        motifs <- motifs[motifs %chin% unlist(get.motifs(biclust = biclust.filter))]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (2)")
+    }
+    if (!is.null(motif.filter)) {
+        motifs <- motifs[motifs %chin% motif.filter]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (3)")
+    }
+    if (!include.bad && exists("bad.clusts")) {
+        bad.ms <- unique(unlist(get.motifs(motif.clust = bad.clusts,
+            expand = F)))
+        motifs <- motifs[!motifs %chin% bad.ms]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (4)")
+    }
+    if (!is.infinite(e.value.cutoff) && !is.na(e.value.cutoff)) {
+        minfo <- get.motif.info(motifs = motifs)
+        e.vals <- do.call(c, lapply(minfo, function(tmp) {
+            if (is.null(tmp))
+                return(NA)
+            return(tmp$e.value)
+        }))
+        motifs <- motifs[e.vals <= e.value.cutoff]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (5)")
+    }
+    if (!include.bad) {
+        if (exists("coding.fracs")) {
+            frac.in.coding <- coding.fracs$all.fracs[motifs]
+        }
+        else {
+            coding.fracs <- get.motif.coding.fracs(motifs, verbose = T)
+            frac.in.coding <- coding.fracs$all.fracs
+        }
+        motifs.orig <- motifs
+        motifs <- motifs[!is.na(frac.in.coding) & frac.in.coding <
+            coding.fracs$mean.fracs - 0.01]
+        if (length(motifs) <= 0)
+            stop("No motifs pass criteria! (6)")
+        rm(coding.seqs, scans, in.coding)
+    }
+    if (verbose)
+        cat(length(motifs), "motifs remain.\n")
+    mots <- strsplit(gsub("MOT_", "", motifs), "_")
+    bi <- as.integer(sapply(mots, "[", 1))
+    mo <- as.integer(sapply(mots, "[", 2))
+    if (type == "mast") {
+        scans <- pssm.scans[J(c(bi, bi), c(mo, -mo), chr), allow.cart = T]
+        scans <- scans[!is.na(scans$posns), ]
+        scans <- scans[scans$posns %betw% (st.st + c(-500, 500)),
+            ]
+    }
+    else if (type == "meme") {
+        scans <- meme.hits[J(c(bi, bi), c(mo, -mo)), allow.cart = T]
+        scans <- scans[!is.na(scans$genome.posns), ]
+        scans <- scans[scans$genome.posns %betw% (st.st + c(-500,
+            500)), ]
+        setnames(scans, 2, "mots")
+        setnames(scans, 8, "posns")
+        scans$posns <- scans$posns + 1
+        scans$mots[scans$strand == "-"] <- -scans$mots[scans$strand ==
+            "-"]
+        scans$mots[scans$gene.strand == "R"] <- -scans$mots[scans$gene.strand ==
+            "R"]
+    }
+    else if (type == "fimo") {
+        scans <- fimo.out[J(bi, mo, chr), allow.cart = T]
+        scans <- scans[scans$Start %betw% (st.st + c(-500, 500)),
+            ]
+        setnames(scans, 2, "mots")
+        scans$mots[scans$Strand == "-"] <- -scans$mots[scans$Strand ==
+            "-"]
+        scans$posns <- ifelse(scans$Strand == "+", scans$Start,
+            scans$Stop) + 1
+        setnames(scans, 3, "gene")
+        setnames(scans, 7, "pvals")
+    }
+    setkey(scans, "bic", "mots")
+    getEntropy <- function(pssm) {
+        pssm[pssm == 0] <- 1e-05
+        entropy <- apply(pssm, 1, function(i) -sum(i * log2(i)))
+        return(entropy)
+    }
+    seq <- substr(e$genome.info$genome.seqs[names(st.st)[1]],
+        st.st[1], st.st[2])
+    mat <- matrix(0, nrow = diff(st.st) + 1, ncol = 4)
+    rownames(mat) <- as.character(st.st[1]:st.st[2])
+    colnames(mat) <- e$col.let
+    if (!dont.plot)
+        mat2 <- mat * 0
+    scans <- scans[scans$posns %betw% (st.st + c(-100, 100))]
+    if (exists("motif.clusts")) {
+        mcs <- get.motif.clusters(motif = motifs)
+        mot.tab <- sort(table(unlist(mcs)))
+        mot.tab <- rev(mot.tab[mot.tab > 2])
+        print(mot.tab)
+    }
+    else {
+        mot.tab <- character()
+    }
+    if (length(mot.tab) > 10)
+        mot.tab <- mot.tab[1:9]
+    if (count.all)
+        mot.tab <- c(ALL = 0, mot.tab)
+    counts <- matrix(0, nrow = nrow(mat), ncol = length(mot.tab))
+    colnames(counts) <- names(mot.tab)
+    rownames(counts) <- rownames(mat)
+    if (!dont.plot)
+        counts2 <- counts
+    if (nrow(scans) > 0) {
+        bics <- unique(scans$bic)
+        for (k in bics) {
+            if (verbose) {
+                wh <- which(bics == k)
+                if (wh%%100 == 1)
+                  cat(k, wh, length(bics), "\n")
+            }
+            sc <- scans[bic == k]
+            mots <- unique(abs(sc$mots))
+            for (m in mots) {
+                width <- motif.widths[k, m]
+                if (width <= 0)
+                  next
+                if (exists("mcs")) {
+                  mc <- mcs[[paste("MOT", k, m, sep = "_")]]
+                  mc <- mc[mc %chin% colnames(counts)]
+                }
+                pssm.orig <- get.motif.info(paste("MOT", k, m,
+                  sep = "_"))[[1]]$pssm
+                pssm.rev <- pssm.orig[nrow(pssm.orig):1, 4:1]
+                entr <- getEntropy(pssm.orig)
+                scale.e.orig <- (2 - entr)/2
+                scale.e.rev <- rev(scale.e.orig)
+                if (!dont.plot) {
+                  pssm.orig2 <- pssm.orig * scale.e.orig
+                  pssm.rev2 <- pssm.rev * scale.e.rev
+                }
+                sc2 <- sc[abs(sc$mots) == m]
+                inds.pssm <- 1:nrow(pssm.orig)
+                for (i in 1:nrow(sc2)) {
+                  mot <- sc2$mots[i]
+                  if (sign(mot) == 1) {
+                    pssm <- pssm.orig
+                    if (!dont.plot) {
+                      pssm2 <- pssm.orig2
+                      scale.e <- scale.e.orig
+                    }
+                  }
+                  else if (sign(mot) == -1) {
+                    pssm <- pssm.rev
+                    if (!dont.plot) {
+                      pssm2 <- pssm.rev2
+                      scale.e <- scale.e.rev
+                    }
+                  }
+                  posn <- sc2$posns[i]
+                  inds <- (posn - 1):(posn - 2 + width)
+                  inds.1 <- inds.pssm[inds %betw% st.st]
+                  if (length(inds.1) <= 0)
+                    next
+                  inds <- inds[inds %betw% st.st]
+                  inds <- inds - st.st[1] + 1
+                  mat[inds, ] <- mat[inds, ] + pssm[inds.1, ]
+                  if (!dont.plot)
+                    mat2[inds, ] <- mat2[inds, ] + pssm2[inds.1,
+                      ]
+                  if (count.all)
+                    counts[inds, "ALL"] <- counts[inds, "ALL"] +
+                      1
+                  if (exists("mc") && length(mc) > 0 && !is.null(mc)) {
+                    counts[inds, mc] <- counts[inds, mc] + 1
+                    if (!dont.plot)
+                      counts2[inds, mc] <- counts2[inds, mc] +
+                        scale.e[inds.1]
+                  }
+                }
+            }
+        }
+    }
+    if (dont.plot)
+        return(invisible(list(motifs = motifs, scans = scans,
+            mat = mat, counts = counts, st.st = st.st, mot.tab = mot.tab)))
+    qout <- NULL
+    if (!is.na(plot.sig.line))
+        qout <- out$get.motif.scan.peak.height.significances(type = type,
+            p.val = p.value.cutoff, motif.filt = motif.filter,
+            ...)
+    if (!is.infinite(plot.sig.line))
+        sig.line <- quantile(qout, plot.sig.line)
+    else sig.line <- max(qout)
+    par(mfrow = c(4, 1))
+    yr <- e$viewPssm(mat, scale.e = apply(mat, 1, sum), no.axis.labels = T,
+        ...)
+    axis(1, labels = rownames(mat)[seq(1, nrow(mat), by = 10)],
+        at = seq(1, nrow(mat), by = 10), line = -0.3)
+    cmax <- max(apply(mat, 1, sum), na.rm = T)
+    axis(4, at = c(0, max(yr)/2, max(yr)), labels = as.character(c("0",
+        round(cmax/2), round(cmax))), pos = nrow(mat) + 1)
+    if (!is.na(plot.sig.line)) {
+        sig.line <- max(yr) * sig.line/round(cmax)
+        lines(c(1, nrow(mat)), rep(sig.line, 2), col = "red",
+            lty = 3, lwd = 3)
+    }
+    if (ncol(counts) > 0) {
+        counts[counts <= 0] <- NA
+        counts2[counts2 <= 0] <- NA
+        for (i in 2:(nrow(counts) - 1)) {
+            counts[i, is.na(counts[i, ]) & !is.na(counts[i -
+                1, ]) & counts[i - 1, ] > 0] <- 0
+            counts[i, is.na(counts[i, ]) & !is.na(counts[i +
+                1, ]) & counts[i + 1, ] > 0] <- 0
+            counts2[i, is.na(counts2[i, ]) & !is.na(counts2[i -
+                1, ]) & counts2[i - 1, ] > 0] <- 0
+            counts2[i, is.na(counts2[i, ]) & !is.na(counts2[i +
+                1, ]) & counts2[i + 1, ] > 0] <- 0
+        }
+        counts1a <- counts
+        if (ncol(counts1a) > 0)
+            matlines(counts1a, typ = "l", lwd = 3, col = 1:ncol(counts),
+                lty = (1:ncol(counts)%/%8) + 1)
+        leg.count <- apply(counts, 2, max, na.rm = T)
+        if (exists("motif.clusts"))
+            leg.count <- mot.tab[colnames(counts)]
+        legend("topleft", legend = paste(colnames(counts), leg.count),
+            lwd = 3, col = 1:ncol(counts), lty = (1:ncol(counts)%/%8) +
+                1, cex = 0.6, horiz = F, trace = F, seg.len = 5)
+    }
+    try(plot.genes.in.region(mean(st.st[1:2]), chr, diff(range(st.st[1:2])),
+        new = T, yscale = 0.5))
+    mat3 <- mat * 0
+    mat3[cbind(rownames(mat3), strsplit(seq, "")[[1]])] <- 1
+    e$viewPssm(mat3, scale.e = rep(0.2, nrow(mat3)), new = F,
+        xoff = min(as.integer(rownames(mat))) - 1, yoff = -0.1,
+        no.axis.labels = T, ...)
+    par(xpd = FALSE)
+    yr <- e$viewPssm(mat2 + max(mat2, na.rm = T)/50, scale.e = NA,
+        no.axis.labels = T, min.height = 0, ...)
+    pssm <- mat2 + 1e-10
+    pssm <- t(apply(pssm, 1, function(i) i/sum(i)))
+    entropy <- apply(pssm, 1, function(i) -sum(i * log2(i)))
+    bits <- 2 - entropy
+    br <- range(bits, na.rm = T)
+    print(max(bits))
+    axis(2, at = c(0, max(yr)/(max(bits)/2)/2, max(yr)/(max(bits)/2)),
+        labels = c("0", "1", "2"), pos = 0, xpd = NA)
+    cmax <- max(counts, na.rm = T)
+    counts1a <- counts * max(yr)/cmax
+    if (ncol(counts1a) > 0)
+        matlines(counts1a, typ = "l", lwd = 3, col = 1:ncol(counts),
+            lty = (1:ncol(counts)%/%8) + 1)
+    axis(4, at = c(0, max(yr)/2, max(yr)), labels = as.character(c("0",
+        round(cmax/2), round(cmax))), pos = nrow(mat) + 1)
+    yr <- e$viewPssm(mat2 * mat3, scale.e = apply(mat2 * mat3,
+        1, sum), no.axis.labels = T, ...)
+    if (ncol(counts2) > 0) {
+        counts2 <- counts * max(yr)/cmax
+        matlines(counts2, typ = "l", lwd = 3, col = 1:ncol(counts),
+            lty = (1:ncol(counts)%/%8) + 1)
+    }
+    axis(1, labels = rownames(mat)[seq(1, nrow(mat), by = 10)],
+        at = seq(1, nrow(mat), by = 10), line = -0.3)
+    invisible(list(motifs = motifs, scans = scans, mat = mat,
+        mat2 = mat2, mat3 = mat3, counts = counts, st.st = st.st,
+        mot.tab = mot.tab))
 }
