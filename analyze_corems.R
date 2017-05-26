@@ -2006,7 +2006,7 @@ motif2 <- function(regulon=NULL,genes=NULL,quant=.1,cutoff=NULL,window=500,shift
       empty.ind <- sapply(motclust,is.null)
       i <- i[!empty.ind,]
       i$motif.clusters <- unlist(motclust)
-      genome.loc <- e$get.gene.coords(n,op.shift=F)
+      genome.loc <- e$get.gene.coords(thisgene,op.shift=F)
       if (genome.loc$strand == "D") {
         ss <- genome.loc$start_pos
         i$distance <- i$posns-ss
