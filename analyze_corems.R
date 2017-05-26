@@ -2152,8 +2152,8 @@ make.motif.reg.network <- function(corems=NULL,genes=NULL,gBg_backbone = NULL,co
   require(data.table)
   require(igraph)
   require(parallel)
-  options(mc.cores=cores)
   require(RColorBrewer)
+  options(mc.cores=cores)
   setkey(corem.table,"Community.ID")
   if (fitness) {
     load("/isb-1/R/ecoli/chemgen/chemgen.RData")
